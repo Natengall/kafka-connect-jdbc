@@ -39,6 +39,14 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   private static final String CONNECTION_URL_DOC = "JDBC connection URL for the database to load.";
   private static final String CONNECTION_URL_DISPLAY = "Connection Url";
 
+  public static final String CONNECTION_USERNAME_CONFIG = "connection.username";
+  public static final String CONNECTION_USERNAME_DOC = "JDBC connection username for the database to send queries under";
+  private static final String CONNECTION_USERNAME_DISPLAY = "Connection Username";
+
+  public static final String CONNECTION_PASSWORD_PATH_CONFIG = "connection.password.path";
+  public static final String CONNECTION_PASSWORD_PATH_DOC = "JDBC connection password path that contains encrypted password";
+  private static final String CONNECTION_PASSWORD_PATH_DISPLAY = "Connection Password Path";
+
   public static final String POLL_INTERVAL_MS_CONFIG = "poll.interval.ms";
   private static final String POLL_INTERVAL_MS_DOC = "Frequency in ms to poll for new data in "
                                                      + "each table.";
@@ -72,6 +80,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String MODE_TIMESTAMP = "timestamp";
   public static final String MODE_INCREMENTING = "incrementing";
   public static final String MODE_TIMESTAMP_INCREMENTING = "timestamp+incrementing";
+  public static final String MODE_CHANGETRACKING = "changetracking";
 
   public static final String INCREMENTING_COLUMN_NAME_CONFIG = "incrementing.column.name";
   private static final String INCREMENTING_COLUMN_NAME_DOC =
@@ -185,7 +194,9 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(SCHEMA_PATTERN_CONFIG, Type.STRING, null, Importance.MEDIUM, SCHEMA_PATTERN_DOC, DATABASE_GROUP, 4, Width.SHORT, SCHEMA_PATTERN_DISPLAY)
         .define(TABLE_TYPE_CONFIG, Type.LIST, TABLE_TYPE_DEFAULT, Importance.LOW,
                 TABLE_TYPE_DOC, CONNECTOR_GROUP, 4, Width.MEDIUM, TABLE_TYPE_DISPLAY)
-        .define(MODE_CONFIG, Type.STRING, MODE_UNSPECIFIED, ConfigDef.ValidString.in(MODE_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP, MODE_INCREMENTING, MODE_TIMESTAMP_INCREMENTING),
+        .define(CONNECTION_USERNAME_CONFIG, Type.STRING, Importance.LOW, CONNECTION_USERNAME_DOC, DATABASE_GROUP, 5, Width.LONG, CONNECTION_USERNAME_DISPLAY)
+        .define(CONNECTION_PASSWORD_PATH_CONFIG, Type.STRING, Importance.LOW, CONNECTION_PASSWORD_PATH_DOC, DATABASE_GROUP, 6, Width.LONG, CONNECTION_PASSWORD_PATH_DISPLAY)
+        .define(MODE_CONFIG, Type.STRING, MODE_UNSPECIFIED, ConfigDef.ValidString.in(MODE_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP, MODE_INCREMENTING, MODE_TIMESTAMP_INCREMENTING, MODE_CHANGETRACKING),
                 Importance.HIGH, MODE_DOC, MODE_GROUP, 1, Width.MEDIUM, MODE_DISPLAY, Arrays.asList(INCREMENTING_COLUMN_NAME_CONFIG, TIMESTAMP_COLUMN_NAME_CONFIG, VALIDATE_NON_NULL_CONFIG))
         .define(INCREMENTING_COLUMN_NAME_CONFIG, Type.STRING, INCREMENTING_COLUMN_NAME_DEFAULT, Importance.MEDIUM, INCREMENTING_COLUMN_NAME_DOC, MODE_GROUP, 2, Width.MEDIUM, INCREMENTING_COLUMN_NAME_DISPLAY,
                 MODE_DEPENDENTS_RECOMMENDER)
@@ -253,6 +264,8 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
           return name.equals(INCREMENTING_COLUMN_NAME_CONFIG) || name.equals(VALIDATE_NON_NULL_CONFIG);
         case MODE_TIMESTAMP_INCREMENTING:
           return name.equals(TIMESTAMP_COLUMN_NAME_CONFIG) || name.equals(INCREMENTING_COLUMN_NAME_CONFIG) || name.equals(VALIDATE_NON_NULL_CONFIG);
+        case MODE_CHANGETRACKING:
+          return name.equals(INCREMENTING_COLUMN_NAME_CONFIG) || name.equals(VALIDATE_NON_NULL_CONFIG);
         case MODE_UNSPECIFIED:
           throw new ConfigException("Query mode must be specified");
         default:

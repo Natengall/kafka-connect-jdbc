@@ -35,6 +35,7 @@ import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.confluent.connect.jdbc.util.CachedConnectionProvider;
+import io.confluent.connect.jdbc.util.CachedConnectionProviderFactory;
 import io.confluent.connect.jdbc.util.JdbcUtils;
 import io.confluent.connect.jdbc.util.Version;
 
@@ -73,7 +74,10 @@ public class JdbcSourceTask extends SourceTask {
       throw new ConnectException("Couldn't start JdbcSourceTask due to configuration error", e);
     }
 
-    cachedConnectionProvider = new CachedConnectionProvider(config.getString(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG));
+    cachedConnectionProvider = CachedConnectionProviderFactory.getConnection(
+        config.getString(JdbcSourceTaskConfig.CONNECTION_URL_CONFIG),
+        config.getString(JdbcSourceTaskConfig.CONNECTION_USERNAME_CONFIG),
+        config.getString(JdbcSourceTaskConfig.CONNECTION_PASSWORD_PATH_CONFIG));
 
     List<String> tables = config.getList(JdbcSourceTaskConfig.TABLES_CONFIG);
     String query = config.getString(JdbcSourceTaskConfig.QUERY_CONFIG);
@@ -88,7 +92,8 @@ public class JdbcSourceTask extends SourceTask {
 
     String mode = config.getString(JdbcSourceTaskConfig.MODE_CONFIG);
     Map<Map<String, String>, Map<String, Object>> offsets = null;
-    if (mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING) ||
+    if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING) ||
+        mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING) ||
         mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP) ||
         mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP_INCREMENTING)) {
       List<Map<String, String>> partitions = new ArrayList<>(tables.size());
@@ -140,7 +145,10 @@ public class JdbcSourceTask extends SourceTask {
 
       String topicPrefix = config.getString(JdbcSourceTaskConfig.TOPIC_PREFIX_CONFIG);
 
-      if (mode.equals(JdbcSourceTaskConfig.MODE_BULK)) {
+      if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING)) {
+        tableQueue.add(new ChangetrackingTableQuerier(
+            queryMode, tableOrQuery, topicPrefix, incrementingColumn, offset, timestampDelayInterval, schemaPattern, cachedConnectionProvider.getValidConnection()));
+      } else if (mode.equals(JdbcSourceTaskConfig.MODE_BULK)) {
         tableQueue.add(new BulkTableQuerier(queryMode, tableOrQuery, schemaPattern, topicPrefix));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(

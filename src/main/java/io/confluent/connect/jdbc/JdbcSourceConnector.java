@@ -38,6 +38,7 @@ import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig;
 import io.confluent.connect.jdbc.source.JdbcSourceTask;
 import io.confluent.connect.jdbc.source.JdbcSourceTaskConfig;
 import io.confluent.connect.jdbc.source.TableMonitorThread;
+import io.confluent.connect.jdbc.util.CachedConnectionProviderFactory;
 import io.confluent.connect.jdbc.util.StringUtils;
 import io.confluent.connect.jdbc.util.Version;
 
@@ -71,7 +72,10 @@ public class JdbcSourceConnector extends SourceConnector {
                                  + "error", e);
     }
 
-    cachedConnectionProvider = new CachedConnectionProvider(config.getString(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG));
+    cachedConnectionProvider = CachedConnectionProviderFactory.getConnection(
+      config.getString(JdbcSourceTaskConfig.CONNECTION_URL_CONFIG),
+      config.getString(JdbcSourceTaskConfig.CONNECTION_USERNAME_CONFIG),
+      config.getString(JdbcSourceTaskConfig.CONNECTION_PASSWORD_PATH_CONFIG));
 
     // Initial connection attempt
     cachedConnectionProvider.getValidConnection();

@@ -31,13 +31,21 @@ public class CachedConnectionProvider {
   private static final int VALIDITY_CHECK_TIMEOUT_MS = 5000;
 
   private final String url;
-  private final String username;
-  private final String password;
+  private String username;
+  private String password;
 
   private Connection connection;
 
   public CachedConnectionProvider(String url) {
     this(url, null, null);
+    String[] components = url.split(";");
+    for (String s : components) {
+      if (s.startsWith("user=")) {
+        this.username = s.substring(5);
+      } else if (s.startsWith("password=")) {
+        this.password = s.substring(9);
+      }
+    }
   }
 
   public CachedConnectionProvider(String url, String username, String password) {
