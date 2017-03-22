@@ -181,6 +181,8 @@ public class ChangetrackingTableQuerier extends TableQuerier {
   private String getDynamicConnectorQuery(String tblName) {
     return "IF OBJECT_ID('tempdb..#kc_primary_keys') IS NOT NULL " +
       "DROP TABLE #kc_primary_keys " +
+      "DECLARE @db_name nvarchar(128);" +
+      "SET @db_name = DB_NAME();" +
       "DECLARE @table_name nvarchar(1000); " +
       "SET @table_name = '" + tblName + "'; " +
       "SELECT K.COLUMN_NAME INTO #kc_primary_keys FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS C JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K ON C.TABLE_NAME = K.TABLE_NAME AND C.CONSTRAINT_CATALOG = K.CONSTRAINT_CATALOG AND C.CONSTRAINT_SCHEMA = K.CONSTRAINT_SCHEMA AND C.CONSTRAINT_NAME = K.CONSTRAINT_NAME AND K.TABLE_NAME = @table_name AND CONSTRAINT_TYPE = 'PRIMARY KEY'; " +
@@ -190,7 +192,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
       "SET @columns = STUFF(( select ', '+ 'CT.'+ COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name AND COLUMN_NAME IN (SELECT COLUMN_NAME FROM #kc_primary_keys) FOR XML PATH('') ), 1, 1, '') + " +
       "STUFF(( select ' , '+ 'P.'+ COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name AND COLUMN_NAME NOT IN (SELECT COLUMN_NAME FROM #kc_primary_keys) FOR XML PATH('') ), 1, 1, '') + " +
       "', SYS_CHANGE_VERSION, SYS_CHANGE_OPERATION,' +  " +
-      "STUFF(( select ', '+ 'CHANGE_TRACKING_IS_COLUMN_IN_MASK (COLUMNPROPERTY(OBJECT_ID(''AAD.dbo.' + @table_name + '''), ''' + COLUMN_NAME + ''', ''ColumnId''), SYS_CHANGE_COLUMNS) AS Change_' + COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name FOR XML PATH('') ), 1, 1, ''); " +
-      "SELECT 'SET TRANSACTION ISOLATION LEVEL SNAPSHOT; SELECT' + @columns + ' FROM CHANGETABLE (CHANGES AAD.dbo.' + @table_name + ', ?) AS CT LEFT OUTER JOIN AAD.dbo.' + @table_name + ' AS P ON ' + @pk_equals; ";
+      "STUFF(( select ', '+ 'CHANGE_TRACKING_IS_COLUMN_IN_MASK (COLUMNPROPERTY(OBJECT_ID(''' + @db_name + '.dbo.' + @table_name + '''), ''' + COLUMN_NAME + ''', ''ColumnId''), SYS_CHANGE_COLUMNS) AS Change_' + COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name FOR XML PATH('') ), 1, 1, ''); " +
+      "SELECT 'SET TRANSACTION ISOLATION LEVEL SNAPSHOT; SELECT' + @columns + ' FROM CHANGETABLE (CHANGES ' + @db_name + '.dbo.' + @table_name + ', ?) AS CT LEFT OUTER JOIN ' + @db_name + '.dbo.' + @table_name + ' AS P ON ' + @pk_equals; ";
   }
 }
