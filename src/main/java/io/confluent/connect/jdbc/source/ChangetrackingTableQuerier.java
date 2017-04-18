@@ -67,6 +67,15 @@ public class ChangetrackingTableQuerier extends TableQuerier {
   }
 
   @Override
+  public void maybeStartQuery(Connection db) throws SQLException {
+    if (resultSet == null) {
+      stmt = getOrCreatePreparedStatement(db);
+      resultSet = executeQuery();
+      schema = DataConverter.convertSchema(name, resultSet.getMetaData(), true);
+    }
+  }
+
+  @Override
   protected void createPreparedStatement(Connection db) throws SQLException {
     // Default when unspecified uses an autoincrementing column
     if (incrementingColumn != null && incrementingColumn.isEmpty()) {
@@ -108,7 +117,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
 
   @Override
   public SourceRecord extractRecord() throws SQLException {
-    final Struct record = DataConverter.convertRecord(schema, resultSet);
+    final Struct record = DataConverter.convertRecord(schema, resultSet, true);
     offset = extractOffset(schema, record);
     final String topic;
     final Map<String, String> partition;

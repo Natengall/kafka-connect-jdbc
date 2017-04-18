@@ -46,6 +46,9 @@ import java.util.TimeZone;
  */
 public class DataConverter {
   private static final Logger log = LoggerFactory.getLogger(JdbcSourceTask.class);
+  private static final String TYPE_PREFIX = "Type_";
+  private static final String CHANGE_PREFIX = "Change_";
+  private static final String SYS_CHANGE_PREFIX =  "SYS_CHANGE_";
 
   private static final ThreadLocal<Calendar> UTC_CALENDAR = new ThreadLocal<Calendar>() {
     @Override
@@ -54,24 +57,23 @@ public class DataConverter {
     }
   };
 
-  public static Schema convertSchema(String tableName, ResultSetMetaData metadata)
+  public static Schema convertSchema(String tableName, ResultSetMetaData metadata, boolean includeType)
       throws SQLException {
     // TODO: Detect changes to metadata, which will require schema updates
     SchemaBuilder builder = SchemaBuilder.struct().name(tableName);
     for (int col = 1; col <= metadata.getColumnCount(); col++) {
-      addFieldSchema(metadata, col, builder);
+      addFieldSchema(metadata, col, builder, includeType);
     }
     return builder.build();
   }
 
-  public static Struct convertRecord(Schema schema, ResultSet resultSet)
+  public static Struct convertRecord(Schema schema, ResultSet resultSet, boolean includeType)
       throws SQLException {
     ResultSetMetaData metadata = resultSet.getMetaData();
     Struct struct = new Struct(schema);
     for (int col = 1; col <= metadata.getColumnCount(); col++) {
       try {
-        convertFieldValue(resultSet, col, metadata.getColumnType(col), struct,
-                          metadata.getColumnLabel(col));
+        convertFieldValue(resultSet, col, metadata.getColumnType(col), struct, metadata.getColumnLabel(col), includeType);
       } catch (IOException e) {
         log.warn("Ignoring record because processing failed:", e);
       } catch (SQLException e) {
@@ -81,15 +83,33 @@ public class DataConverter {
     return struct;
   }
 
+  public static Schema convertSchema(String tableName, ResultSetMetaData metadata)
+      throws SQLException {
+    return convertSchema(tableName, metadata, false);
+  }
+
+  public static Struct convertRecord(Schema schema, ResultSet resultSet)
+      throws SQLException {
+    return convertRecord(schema, resultSet, false);
+  }
+
+  private static boolean isOriginalColumn(String fieldName) {
+    return (!fieldName.startsWith(CHANGE_PREFIX)) && (!fieldName.startsWith(SYS_CHANGE_PREFIX));
+  }
 
   private static void addFieldSchema(ResultSetMetaData metadata, int col,
-                                     SchemaBuilder builder)
+                                     SchemaBuilder builder, boolean includeType)
       throws SQLException {
+
     // Label is what the query requested the column name be using an "AS" clause, name is the
     // original
     String label = metadata.getColumnLabel(col);
     String name = metadata.getColumnName(col);
-    String fieldName = label != null && !label.isEmpty() ? label : name;
+    String fieldName = (label != null && !label.isEmpty()) ? label : name;
+
+    if (includeType && isOriginalColumn(fieldName)) {
+      builder.field(TYPE_PREFIX + fieldName, Schema.STRING_SCHEMA);
+    }
 
     int sqlType = metadata.getColumnType(col);
     boolean optional = false;
@@ -263,8 +283,13 @@ public class DataConverter {
   }
 
   private static void convertFieldValue(ResultSet resultSet, int col, int colType,
-                                        Struct struct, String fieldName)
+                                        Struct struct, String fieldName, boolean includeType)
       throws SQLException, IOException {
+
+    if (includeType && isOriginalColumn(fieldName)) {
+      struct.put(TYPE_PREFIX + fieldName, resultSet.getMetaData().getColumnTypeName(col));
+    }
+
     final Object colValue;
     switch (colType) {
       case Types.NULL: {
