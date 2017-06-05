@@ -29,6 +29,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -121,6 +122,8 @@ public class JdbcSourceTask extends SourceTask {
         = config.getString(JdbcSourceTaskConfig.TIMESTAMP_COLUMN_NAME_CONFIG);
     Long timestampDelayInterval
         = config.getLong(JdbcSourceTaskConfig.TIMESTAMP_DELAY_INTERVAL_MS_CONFIG);
+    Object initialOffset
+        = config.getLong(JdbcSourceTaskConfig.INITIAL_OFFSET_CONFIG);
     boolean validateNonNulls
         = config.getBoolean(JdbcSourceTaskConfig.VALIDATE_NON_NULL_CONFIG);
 
@@ -141,7 +144,14 @@ public class JdbcSourceTask extends SourceTask {
         default:
           throw new ConnectException("Unexpected query mode: " + queryMode);
       }
-      Map<String, Object> offset = offsets == null ? null : offsets.get(partition);
+
+      Map<String, Object> offset = null;
+      if (offsets != null) {
+        offset = offsets.get(partition);
+      } else if (initialOffset != null) {
+        offset = new HashMap<String, Object>();
+        offset.put("incrementing", initialOffset);
+      }
 
       String topicPrefix = config.getString(JdbcSourceTaskConfig.TOPIC_PREFIX_CONFIG);
 
