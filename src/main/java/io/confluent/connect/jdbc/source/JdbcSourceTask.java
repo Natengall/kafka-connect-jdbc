@@ -148,9 +148,14 @@ public class JdbcSourceTask extends SourceTask {
       Map<String, Object> offset = null;
       if (offsets != null) {
         offset = offsets.get(partition);
-      } else if (initialOffset != null) {
-        offset = new HashMap<String, Object>();
-        offset.put("incrementing", initialOffset);
+        if (offset == null && initialOffset != null) {
+          offset = new HashMap<String, Object>();
+          if (mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP)) {
+            offset.put(JdbcSourceTaskConfig.MODE_TIMESTAMP, initialOffset);
+          } else {
+            offset.put(JdbcSourceTaskConfig.MODE_INCREMENTING, initialOffset);
+          }
+        }
       }
 
       String topicPrefix = config.getString(JdbcSourceTaskConfig.TOPIC_PREFIX_CONFIG);
