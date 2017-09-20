@@ -66,10 +66,12 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
   private TimestampIncrementingOffset offset;
 
   public TimestampIncrementingTableQuerier(QueryMode mode, String name, String topicPrefix,
+                                           String transactionLevel,
+                                           String partitionColumn, String keyColumn,
                                            String timestampColumn, String incrementingColumn,
                                            Map<String, Object> offsetMap, Long timestampDelay,
                                            String schemaPattern) {
-    super(mode, name, topicPrefix, schemaPattern);
+    super(mode, name, topicPrefix, schemaPattern, transactionLevel, partitionColumn, keyColumn);
     this.timestampColumn = timestampColumn;
     this.incrementingColumn = incrementingColumn;
     this.timestampDelay = timestampDelay;
@@ -85,7 +87,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
 
     String quoteString = JdbcUtils.getIdentifierQuoteString(db);
 
-    StringBuilder builder = new StringBuilder();
+    StringBuilder builder = new StringBuilder(getTransactionLevelString());
 
     switch (mode) {
       case TABLE:
@@ -199,7 +201,36 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       default:
         throw new ConnectException("Unexpected query mode: " + mode);
     }
-    return new SourceRecord(partition, offset.toMap(), topic, record.schema(), record);
+
+    int partitionValue = 0;
+    if (!partitionColumn.isEmpty()) {
+      switch (schema.field(partitionColumn).schema().type()) {
+        case INT16:
+          partitionValue = record.getInt16(partitionColumn);
+          break;
+        case INT32:
+          partitionValue = record.getInt32(partitionColumn);
+          break;
+        case INT64:
+          partitionValue = record.getInt64(partitionColumn).intValue();
+          break;
+        case STRING:
+          partitionValue = Integer.parseInt(record.getString(partitionColumn));
+          break;
+      }
+    }
+
+    log.info("TableQuerier key: {}, partition: {}, record: {}", keyColumn.isEmpty() ? "null" : keyColumn, (partitionColumn.isEmpty() ? "null" : (partitionColumn + "(" + partitionValue + ")")), record.toString());
+    return new SourceRecord(
+      partition,
+      offset.toMap(),
+      topic,
+      partitionColumn.isEmpty() ? null : partitionValue,
+      keyColumn.isEmpty() ? null : schema.field(keyColumn).schema(),
+      keyColumn.isEmpty() ? null : record.get(keyColumn),
+      record.schema(),
+      record
+    );
   }
 
   // Visible for testing

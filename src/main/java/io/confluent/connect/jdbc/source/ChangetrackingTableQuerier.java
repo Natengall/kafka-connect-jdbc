@@ -26,9 +26,9 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Collections;
 import java.util.Map;
 
@@ -47,23 +47,20 @@ public class ChangetrackingTableQuerier extends TableQuerier {
   private String incrementingColumn;
   private ChangetrackingOffset offset;
   private String dynamicSql;
+  private Connection connection;
 
-  public ChangetrackingTableQuerier(QueryMode mode, String name, String topicPrefix, String incrementingColumn,
+  public ChangetrackingTableQuerier(QueryMode mode, String name, String topicPrefix,
+                                           String transactionLevel,
+                                           String partitionColumn, String keyColumn,
+                                           String incrementingColumn,
                                            Map<String, Object> offsetMap, Long timestampDelay,
                                            String schemaPattern, Connection connection) {
-    super(mode, name, topicPrefix, schemaPattern);
+    super(mode, name, topicPrefix, schemaPattern, transactionLevel, partitionColumn, keyColumn);
+    this.partitionColumn = partitionColumn;
+    this.keyColumn = keyColumn;
     this.incrementingColumn = incrementingColumn;
     this.offset = ChangetrackingOffset.fromMap(offsetMap);
-    Statement dynamicConnectorStatement;
-    try {
-      dynamicConnectorStatement = connection.createStatement();
-      String dynamicConnectorQuery = getDynamicConnectorQuery(name);
-      ResultSet rs = dynamicConnectorStatement.executeQuery(dynamicConnectorQuery);
-      rs.next();
-      dynamicSql = rs.getString(1);
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
+    this.connection = connection;
   }
 
   @Override
@@ -84,7 +81,9 @@ public class ChangetrackingTableQuerier extends TableQuerier {
 
     String quoteString = JdbcUtils.getIdentifierQuoteString(db);
 
-    StringBuilder builder = new StringBuilder();
+    StringBuilder builder = new StringBuilder(getTransactionLevelString());
+
+    updateDynamicSql();
 
     switch (mode) {
       case TABLE:
@@ -134,7 +133,36 @@ public class ChangetrackingTableQuerier extends TableQuerier {
       default:
         throw new ConnectException("Unexpected query mode: " + mode);
     }
-    return new SourceRecord(partition, offset.toMap(), topic, record.schema(), record);
+
+    int partitionValue = 0;
+    if (!partitionColumn.isEmpty()) {
+      switch (schema.field(partitionColumn).schema().type()) {
+        case INT16:
+          partitionValue = record.getInt16(partitionColumn);
+          break;
+        case INT32:
+          partitionValue = record.getInt32(partitionColumn);
+          break;
+        case INT64:
+          partitionValue = record.getInt64(partitionColumn).intValue();
+          break;
+        case STRING:
+          partitionValue = Integer.parseInt(record.getString(partitionColumn));
+          break;
+      }
+    }
+
+    log.info("TableQuerier key: {}, partition: {}, record: {}", keyColumn.isEmpty() ? "null" : keyColumn, (partitionColumn.isEmpty() ? "null" : (partitionColumn + "(" + partitionValue + ")")), record.toString());
+    return new SourceRecord(
+      partition,
+      offset.toMap(),
+      topic,
+      partitionColumn.isEmpty() ? null : partitionValue,
+      keyColumn.isEmpty() ? null : schema.field(keyColumn).schema(),
+      keyColumn.isEmpty() ? null : record.get(keyColumn),
+      record.schema(),
+      record
+    );
   }
 
   // Visible for testing
@@ -186,6 +214,18 @@ public class ChangetrackingTableQuerier extends TableQuerier {
            ", incrementingColumn='" + incrementingColumn + '\'' +
            '}';
   }
+  
+  private void updateDynamicSql() {
+    try {
+      String dynamicConnectorQuery = getDynamicConnectorQuery(name);
+      PreparedStatement dynamicConnectorStatement = connection.prepareStatement(dynamicConnectorQuery);
+      ResultSet rs = dynamicConnectorStatement.executeQuery();
+      rs.next();
+      dynamicSql = rs.getString(1);
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
 
   private String getDynamicConnectorQuery(String tblName) {
     return "IF OBJECT_ID('tempdb..#kc_primary_keys') IS NOT NULL " +
@@ -202,6 +242,6 @@ public class ChangetrackingTableQuerier extends TableQuerier {
       "STUFF(( select ' , '+ 'P.'+ COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name AND COLUMN_NAME NOT IN (SELECT COLUMN_NAME FROM #kc_primary_keys) FOR XML PATH('') ), 1, 1, '') + " +
       "', SYS_CHANGE_VERSION, SYS_CHANGE_OPERATION,' +  " +
       "STUFF(( select ', '+ 'CHANGE_TRACKING_IS_COLUMN_IN_MASK (COLUMNPROPERTY(OBJECT_ID(''' + @db_name + '.dbo.' + @table_name + '''), ''' + COLUMN_NAME + ''', ''ColumnId''), SYS_CHANGE_COLUMNS) AS Change_' + COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name FOR XML PATH('') ), 1, 1, ''); " +
-      "SELECT 'SET TRANSACTION ISOLATION LEVEL SNAPSHOT; SELECT' + @columns + ' FROM CHANGETABLE (CHANGES ' + @db_name + '.dbo.' + @table_name + ', ?) AS CT LEFT OUTER JOIN ' + @db_name + '.dbo.' + @table_name + ' AS P ON ' + @pk_equals; ";
+      "SELECT 'SELECT ' + @columns + ' FROM CHANGETABLE (CHANGES ' + @db_name + '.dbo.' + @table_name + ', ?) AS CT LEFT OUTER JOIN ' + @db_name + '.dbo.' + @table_name + ' AS P ON ' + @pk_equals; ";
   }
 }

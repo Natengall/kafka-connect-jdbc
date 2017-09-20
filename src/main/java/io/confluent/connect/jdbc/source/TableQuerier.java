@@ -46,14 +46,25 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
   protected PreparedStatement stmt;
   protected ResultSet resultSet;
   protected Schema schema;
+  protected String partitionColumn;
+  protected String keyColumn;
+  protected String transactionLevel;
 
-  public TableQuerier(QueryMode mode, String nameOrQuery, String topicPrefix, String schemaPattern) {
+  static final String TRANSACTION_LEVEL_TEMPLATE = "SET TRANSACTION ISOLATION LEVEL ";
+
+  public TableQuerier(QueryMode mode, String nameOrQuery,
+          String topicPrefix, String schemaPattern,
+          String transactionLevel, String partitionColumn,
+          String keyColumn) {
     this.mode = mode;
     this.schemaPattern = schemaPattern;
     this.name = mode.equals(QueryMode.TABLE) ? nameOrQuery : null;
     this.query = mode.equals(QueryMode.QUERY) ? nameOrQuery : null;
     this.topicPrefix = topicPrefix;
     this.lastUpdate = 0;
+    this.transactionLevel = transactionLevel;
+    this.partitionColumn = partitionColumn;
+    this.keyColumn = keyColumn;
   }
 
   public long getLastUpdate() {
@@ -127,6 +138,26 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
       return 1;
     } else {
       return this.name.compareTo(other.name);
+    }
+  }
+
+  protected String getTransactionLevelString() {
+    if (transactionLevel == null) {
+      return "";
+    }
+    switch (transactionLevel) {
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_READ_UNCOMMITTED:
+        return TRANSACTION_LEVEL_TEMPLATE + "READ UNCOMMITTED; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_READ_COMMITTED:
+        return TRANSACTION_LEVEL_TEMPLATE + "READ COMMITTED; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ:
+        return TRANSACTION_LEVEL_TEMPLATE + "REPEATABLE READ; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_READ_SNAPSHOT:
+        return TRANSACTION_LEVEL_TEMPLATE + "SNAPSHOT; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_SERIALIZABLE:
+        return TRANSACTION_LEVEL_TEMPLATE + "SERIALIZABLE; ";
+      default:
+        return "";
     }
   }
 }

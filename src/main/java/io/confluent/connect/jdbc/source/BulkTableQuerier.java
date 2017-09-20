@@ -36,24 +36,26 @@ import io.confluent.connect.jdbc.util.JdbcUtils;
 public class BulkTableQuerier extends TableQuerier {
   private static final Logger log = LoggerFactory.getLogger(BulkTableQuerier.class);
 
-  public BulkTableQuerier(QueryMode mode, String name, String schemaPattern, String topicPrefix) {
-    super(mode, name, topicPrefix, schemaPattern);
+  public BulkTableQuerier(QueryMode mode, String name, String schemaPattern, String topicPrefix, String transactionLevel, String partitionColumn, String keyColumn) {
+    super(mode, name, topicPrefix, schemaPattern, transactionLevel, partitionColumn, keyColumn);
   }
 
   @Override
   protected void createPreparedStatement(Connection db) throws SQLException {
+    StringBuilder builder = new StringBuilder(getTransactionLevelString());
+
     switch (mode) {
       case TABLE:
         String quoteString = JdbcUtils.getIdentifierQuoteString(db);
-        String queryString = "SELECT * FROM " + JdbcUtils.quoteString(name, quoteString);
-        log.debug("{} prepared SQL query: {}", this, queryString);
-        stmt = db.prepareStatement(queryString);
+        builder.append("SELECT * FROM " + JdbcUtils.quoteString(name, quoteString));
         break;
       case QUERY:
-        log.debug("{} prepared SQL query: {}", this, query);
-        stmt = db.prepareStatement(query);
+        builder.append(query);
         break;
     }
+    String queryString = builder.toString();
+    log.debug("{} prepared SQL query: {}", this, queryString);
+    stmt = db.prepareStatement(queryString);
   }
 
   @Override
@@ -80,7 +82,36 @@ public class BulkTableQuerier extends TableQuerier {
       default:
         throw new ConnectException("Unexpected query mode: " + mode);
     }
-    return new SourceRecord(partition, null, topic, record.schema(), record);
+
+    int partitionValue = 0;
+    if (!partitionColumn.isEmpty()) {
+      switch (schema.field(partitionColumn).schema().type()) {
+        case INT16:
+          partitionValue = record.getInt16(partitionColumn);
+          break;
+        case INT32:
+          partitionValue = record.getInt32(partitionColumn);
+          break;
+        case INT64:
+          partitionValue = record.getInt64(partitionColumn).intValue();
+          break;
+        case STRING:
+          partitionValue = Integer.parseInt(record.getString(partitionColumn));
+          break;
+      }
+    }
+
+    log.info("TableQuerier key: {}, partition: {}, record: {}", keyColumn.isEmpty() ? "null" : keyColumn, (partitionColumn.isEmpty() ? "null" : (partitionColumn + "(" + partitionValue + ")")), record.toString());
+    return new SourceRecord(
+      partition,
+      null,
+      topic,
+      partitionColumn.isEmpty() ? null : partitionValue,
+      keyColumn.isEmpty() ? null : schema.field(keyColumn).schema(),
+      keyColumn.isEmpty() ? null : record.get(keyColumn),
+      record.schema(),
+      record
+    );
   }
 
   @Override

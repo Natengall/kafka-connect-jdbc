@@ -60,6 +60,18 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final int BATCH_MAX_ROWS_DEFAULT = 100;
   private static final String BATCH_MAX_ROWS_DISPLAY = "Max Rows Per Batch";
 
+  public static final String TRANSACTION_ISOLATION_LEVEL_CONFIG = "transaction.isolation.level";
+  private static final String TRANSACTION_ISOLATION_LEVEL_DOC = "Controls the locking and row versioning "
+      + "behavior of Transact-SQL statements issued by a connection to SQL Server.";
+  private static final String TRANSACTION_ISOLATION_LEVEL_DISPLAY = "Transaction Isolation Level";
+
+  public static final String TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED = "";
+  public static final String TRANSACTION_ISOLATION_LEVEL_READ_UNCOMMITTED = "uncommitted";
+  public static final String TRANSACTION_ISOLATION_LEVEL_READ_COMMITTED = "committed";
+  public static final String TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ = "repeatable";
+  public static final String TRANSACTION_ISOLATION_LEVEL_READ_SNAPSHOT = "snapshot";
+  public static final String TRANSACTION_ISOLATION_LEVEL_SERIALIZABLE = "serializable";
+
   public static final String MODE_CONFIG = "mode";
   private static final String MODE_DOC =
       "The mode for updating a table each time it is polled. Options include:\n"
@@ -81,6 +93,20 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String MODE_INCREMENTING = "incrementing";
   public static final String MODE_TIMESTAMP_INCREMENTING = "timestamp+incrementing";
   public static final String MODE_CHANGETRACKING = "changetracking";
+
+  public static final String PARTITION_COLUMN_NAME_CONFIG = "partition.column.name";
+  private static final String PARTITION_COLUMN_NAME_DOC =
+      "The name of the column to use to determine which partition to put the Kafka record. "
+      + "An empty value indicates that there is no partition key. This column is nullable.";
+  public static final String PARTITION_COLUMN_NAME_DEFAULT = "";
+  private static final String PARTITION_COLUMN_NAME_DISPLAY = "Partition Column Name";
+
+  public static final String KEY_COLUMN_NAME_CONFIG = "key.column.name";
+  private static final String KEY_COLUMN_NAME_DOC =
+      "The name of the column to use to produce into the Kafka record as a key. Any empty value "
+      + "indicates that there are no keys to insert. This column is nullable.";
+  public static final String KEY_COLUMN_NAME_DEFAULT = "";
+  private static final String KEY_COLUMN_NAME_DISPLAY = "Key Column Name";
 
   public static final String INCREMENTING_COLUMN_NAME_CONFIG = "incrementing.column.name";
   private static final String INCREMENTING_COLUMN_NAME_DOC =
@@ -168,6 +194,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String DATABASE_GROUP = "Database";
   public static final String MODE_GROUP = "Mode";
   public static final String CONNECTOR_GROUP = "Connector";
+  public static final String TRANSACTION_ISOLATION_LEVEL_GROUP = "Transaction";
 
 
   private static final Recommender TABLE_RECOMMENDER = new TableRecommender();
@@ -203,6 +230,11 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(CONNECTION_PASSWORD_PATH_CONFIG, Type.STRING, Importance.LOW, CONNECTION_PASSWORD_PATH_DOC, DATABASE_GROUP, 6, Width.LONG, CONNECTION_PASSWORD_PATH_DISPLAY)
         .define(MODE_CONFIG, Type.STRING, MODE_UNSPECIFIED, ConfigDef.ValidString.in(MODE_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP, MODE_INCREMENTING, MODE_TIMESTAMP_INCREMENTING, MODE_CHANGETRACKING),
                 Importance.HIGH, MODE_DOC, MODE_GROUP, 1, Width.MEDIUM, MODE_DISPLAY, Arrays.asList(INCREMENTING_COLUMN_NAME_CONFIG, TIMESTAMP_COLUMN_NAME_CONFIG, VALIDATE_NON_NULL_CONFIG))
+        .define(TRANSACTION_ISOLATION_LEVEL_CONFIG, Type.STRING, TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED, ConfigDef.ValidString.in(TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP,
+                TRANSACTION_ISOLATION_LEVEL_READ_UNCOMMITTED, TRANSACTION_ISOLATION_LEVEL_READ_COMMITTED, TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ, TRANSACTION_ISOLATION_LEVEL_READ_SNAPSHOT, TRANSACTION_ISOLATION_LEVEL_SERIALIZABLE),
+                Importance.HIGH, TRANSACTION_ISOLATION_LEVEL_DOC, TRANSACTION_ISOLATION_LEVEL_GROUP, 1, Width.MEDIUM, TRANSACTION_ISOLATION_LEVEL_DISPLAY)
+        .define(PARTITION_COLUMN_NAME_CONFIG, Type.STRING, PARTITION_COLUMN_NAME_DEFAULT, Importance.MEDIUM, PARTITION_COLUMN_NAME_DOC, DATABASE_GROUP, 2, Width.MEDIUM, PARTITION_COLUMN_NAME_DISPLAY)
+        .define(KEY_COLUMN_NAME_CONFIG, Type.STRING, KEY_COLUMN_NAME_DEFAULT, Importance.MEDIUM, KEY_COLUMN_NAME_DOC, DATABASE_GROUP, 2, Width.MEDIUM, KEY_COLUMN_NAME_DISPLAY)
         .define(INCREMENTING_COLUMN_NAME_CONFIG, Type.STRING, INCREMENTING_COLUMN_NAME_DEFAULT, Importance.MEDIUM, INCREMENTING_COLUMN_NAME_DOC, MODE_GROUP, 2, Width.MEDIUM, INCREMENTING_COLUMN_NAME_DISPLAY,
                 MODE_DEPENDENTS_RECOMMENDER)
         .define(TIMESTAMP_COLUMN_NAME_CONFIG, Type.STRING, TIMESTAMP_COLUMN_NAME_DEFAULT, Importance.MEDIUM, TIMESTAMP_COLUMN_NAME_DOC, MODE_GROUP, 3, Width.MEDIUM, TIMESTAMP_COLUMN_NAME_DISPLAY,

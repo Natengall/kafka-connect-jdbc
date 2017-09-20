@@ -91,6 +91,7 @@ public class JdbcSourceTask extends SourceTask {
     List<String> tablesOrQuery = queryMode == TableQuerier.QueryMode.QUERY ?
                                  Collections.singletonList(query) : tables;
 
+    String transactionLevel = config.getString(JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_CONFIG);
     String mode = config.getString(JdbcSourceTaskConfig.MODE_CONFIG);
     Map<Map<String, String>, Map<String, Object>> offsets = null;
     if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING) ||
@@ -116,6 +117,10 @@ public class JdbcSourceTask extends SourceTask {
 
     String schemaPattern
         = config.getString(JdbcSourceTaskConfig.SCHEMA_PATTERN_CONFIG);
+    String partitionColumn
+        = config.getString(JdbcSourceTaskConfig.PARTITION_COLUMN_NAME_CONFIG);
+    String keyColumn
+        = config.getString(JdbcSourceTaskConfig.KEY_COLUMN_NAME_CONFIG);
     String incrementingColumn
         = config.getString(JdbcSourceTaskConfig.INCREMENTING_COLUMN_NAME_CONFIG);
     String timestampColumn
@@ -162,18 +167,19 @@ public class JdbcSourceTask extends SourceTask {
 
       if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING)) {
         tableQueue.add(new ChangetrackingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, incrementingColumn, offset, timestampDelayInterval, schemaPattern, cachedConnectionProvider.getValidConnection()));
+            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, incrementingColumn, offset, timestampDelayInterval, schemaPattern, cachedConnectionProvider.getValidConnection()));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_BULK)) {
-        tableQueue.add(new BulkTableQuerier(queryMode, tableOrQuery, schemaPattern, topicPrefix));
+        tableQueue.add(new BulkTableQuerier(
+            queryMode, tableOrQuery, schemaPattern, topicPrefix, transactionLevel, partitionColumn, keyColumn));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, null, incrementingColumn, offset, timestampDelayInterval, schemaPattern));
+            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, null, incrementingColumn, offset, timestampDelayInterval, schemaPattern));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, timestampColumn, null, offset, timestampDelayInterval, schemaPattern));
+            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, timestampColumn, null, offset, timestampDelayInterval, schemaPattern));
       } else if (mode.endsWith(JdbcSourceTaskConfig.MODE_TIMESTAMP_INCREMENTING)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, timestampColumn, incrementingColumn, offset, timestampDelayInterval, schemaPattern));
+            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, timestampColumn, incrementingColumn, offset, timestampDelayInterval, schemaPattern));
       }
     }
 
