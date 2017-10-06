@@ -50,14 +50,10 @@ public class ChangetrackingTableQuerier extends TableQuerier {
   private Connection connection;
 
   public ChangetrackingTableQuerier(QueryMode mode, String name, String topicPrefix,
-                                           String transactionLevel,
-                                           String partitionColumn, String keyColumn,
                                            String incrementingColumn,
                                            Map<String, Object> offsetMap, Long timestampDelay,
-                                           String schemaPattern, Connection connection) {
-    super(mode, name, topicPrefix, schemaPattern, transactionLevel, partitionColumn, keyColumn);
-    this.partitionColumn = partitionColumn;
-    this.keyColumn = keyColumn;
+                                           String schemaPattern, Connection connection, JdbcSourceConnectorConfig config) {
+    super(mode, name, topicPrefix, schemaPattern, config);
     this.incrementingColumn = incrementingColumn;
     this.offset = ChangetrackingOffset.fromMap(offsetMap);
     this.connection = connection;
@@ -152,7 +148,6 @@ public class ChangetrackingTableQuerier extends TableQuerier {
       }
     }
 
-    log.info("TableQuerier key: {}, partition: {}, record: {}", keyColumn.isEmpty() ? "null" : keyColumn, (partitionColumn.isEmpty() ? "null" : (partitionColumn + "(" + partitionValue + ")")), record.toString());
     return new SourceRecord(
       partition,
       offset.toMap(),
@@ -214,10 +209,10 @@ public class ChangetrackingTableQuerier extends TableQuerier {
            ", incrementingColumn='" + incrementingColumn + '\'' +
            '}';
   }
-  
+
   private void updateDynamicSql() {
     try {
-      String dynamicConnectorQuery = getDynamicConnectorQuery(name);
+      String dynamicConnectorQuery = getDynamicConnectorQuery();
       PreparedStatement dynamicConnectorStatement = connection.prepareStatement(dynamicConnectorQuery);
       ResultSet rs = dynamicConnectorStatement.executeQuery();
       rs.next();
@@ -227,13 +222,13 @@ public class ChangetrackingTableQuerier extends TableQuerier {
     }
   }
 
-  private String getDynamicConnectorQuery(String tblName) {
+  private String getDynamicConnectorQuery() {
     return "IF OBJECT_ID('tempdb..#kc_primary_keys') IS NOT NULL " +
       "DROP TABLE #kc_primary_keys " +
       "DECLARE @db_name nvarchar(128);" +
       "SET @db_name = DB_NAME();" +
       "DECLARE @table_name nvarchar(1000); " +
-      "SET @table_name = '" + tblName + "'; " +
+      "SET @table_name = '" + name + "'; " +
       "SELECT K.COLUMN_NAME INTO #kc_primary_keys FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS C JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K ON C.TABLE_NAME = K.TABLE_NAME AND C.CONSTRAINT_CATALOG = K.CONSTRAINT_CATALOG AND C.CONSTRAINT_SCHEMA = K.CONSTRAINT_SCHEMA AND C.CONSTRAINT_NAME = K.CONSTRAINT_NAME AND K.TABLE_NAME = @table_name AND CONSTRAINT_TYPE = 'PRIMARY KEY'; " +
       "DECLARE @pk_equals varchar(MAX); " +
       "SET @pk_equals = STUFF(( select ' AND CT.' + COLUMN_NAME + ' = P.' + COLUMN_NAME  from #kc_primary_keys FOR XML PATH('') ), 1, 4, ''); " +

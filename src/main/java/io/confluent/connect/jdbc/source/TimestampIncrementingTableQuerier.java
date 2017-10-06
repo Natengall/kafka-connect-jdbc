@@ -66,12 +66,10 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
   private TimestampIncrementingOffset offset;
 
   public TimestampIncrementingTableQuerier(QueryMode mode, String name, String topicPrefix,
-                                           String transactionLevel,
-                                           String partitionColumn, String keyColumn,
                                            String timestampColumn, String incrementingColumn,
                                            Map<String, Object> offsetMap, Long timestampDelay,
-                                           String schemaPattern) {
-    super(mode, name, topicPrefix, schemaPattern, transactionLevel, partitionColumn, keyColumn);
+                                           String schemaPattern, JdbcSourceConnectorConfig config) {
+    super(mode, name, topicPrefix, schemaPattern, config);
     this.timestampColumn = timestampColumn;
     this.incrementingColumn = incrementingColumn;
     this.timestampDelay = timestampDelay;
@@ -220,7 +218,6 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       }
     }
 
-    log.info("TableQuerier key: {}, partition: {}, record: {}", keyColumn.isEmpty() ? "null" : keyColumn, (partitionColumn.isEmpty() ? "null" : (partitionColumn + "(" + partitionValue + ")")), record.toString());
     return new SourceRecord(
       partition,
       offset.toMap(),

@@ -53,18 +53,16 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
   static final String TRANSACTION_LEVEL_TEMPLATE = "SET TRANSACTION ISOLATION LEVEL ";
 
   public TableQuerier(QueryMode mode, String nameOrQuery,
-          String topicPrefix, String schemaPattern,
-          String transactionLevel, String partitionColumn,
-          String keyColumn) {
+          String topicPrefix, String schemaPattern, JdbcSourceConnectorConfig config) {
     this.mode = mode;
     this.schemaPattern = schemaPattern;
     this.name = mode.equals(QueryMode.TABLE) ? nameOrQuery : null;
     this.query = mode.equals(QueryMode.QUERY) ? nameOrQuery : null;
     this.topicPrefix = topicPrefix;
     this.lastUpdate = 0;
-    this.transactionLevel = transactionLevel;
-    this.partitionColumn = partitionColumn;
-    this.keyColumn = keyColumn;
+    this.transactionLevel = config.getString(JdbcSourceConnectorConfig.TRANSACTION_ISOLATION_LEVEL_CONFIG);
+    this.partitionColumn = config.getString(JdbcSourceConnectorConfig.PARTITION_COLUMN_NAME_CONFIG);
+    this.keyColumn = config.getString(JdbcSourceConnectorConfig.KEY_COLUMN_NAME_CONFIG);
   }
 
   public long getLastUpdate() {

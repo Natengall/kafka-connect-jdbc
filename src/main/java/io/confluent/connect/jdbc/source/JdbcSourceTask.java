@@ -167,19 +167,19 @@ public class JdbcSourceTask extends SourceTask {
 
       if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING)) {
         tableQueue.add(new ChangetrackingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, incrementingColumn, offset, timestampDelayInterval, schemaPattern, cachedConnectionProvider.getValidConnection()));
+            queryMode, tableOrQuery, topicPrefix, incrementingColumn, offset, timestampDelayInterval, schemaPattern, cachedConnectionProvider.getValidConnection(), config));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_BULK)) {
         tableQueue.add(new BulkTableQuerier(
-            queryMode, tableOrQuery, schemaPattern, topicPrefix, transactionLevel, partitionColumn, keyColumn));
+            queryMode, tableOrQuery, schemaPattern, topicPrefix, config));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, null, incrementingColumn, offset, timestampDelayInterval, schemaPattern));
+            queryMode, tableOrQuery, topicPrefix, null, incrementingColumn, offset, timestampDelayInterval, schemaPattern, config));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, timestampColumn, null, offset, timestampDelayInterval, schemaPattern));
+            queryMode, tableOrQuery, topicPrefix, timestampColumn, null, offset, timestampDelayInterval, schemaPattern, config));
       } else if (mode.endsWith(JdbcSourceTaskConfig.MODE_TIMESTAMP_INCREMENTING)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, transactionLevel, partitionColumn, keyColumn, timestampColumn, incrementingColumn, offset, timestampDelayInterval, schemaPattern));
+            queryMode, tableOrQuery, topicPrefix, timestampColumn, incrementingColumn, offset, timestampDelayInterval, schemaPattern, config));
       }
     }
 
