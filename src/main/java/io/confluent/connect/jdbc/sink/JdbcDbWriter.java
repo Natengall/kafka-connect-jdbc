@@ -27,6 +27,7 @@ import java.util.Map;
 
 import io.confluent.connect.jdbc.sink.dialect.DbDialect;
 import io.confluent.connect.jdbc.util.CachedConnectionProvider;
+import io.confluent.connect.jdbc.util.CachedConnectionProviderFactory;
 
 public class JdbcDbWriter {
 
@@ -40,12 +41,7 @@ public class JdbcDbWriter {
     this.dbDialect = dbDialect;
     this.dbStructure = dbStructure;
 
-    this.cachedConnectionProvider = new CachedConnectionProvider(config.connectionUrl, config.connectionUser, config.connectionPassword) {
-      @Override
-      protected void onConnect(Connection connection) throws SQLException {
-        connection.setAutoCommit(false);
-      }
-    };
+    this.cachedConnectionProvider = CachedConnectionProviderFactory.getConnection(config.connectionUrl, config.connectionUser, config.connectionPasswordPath);
   }
 
   void write(final Collection<SinkRecord> records) throws SQLException {

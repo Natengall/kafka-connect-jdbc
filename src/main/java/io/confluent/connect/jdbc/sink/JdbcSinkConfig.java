@@ -58,9 +58,9 @@ public class JdbcSinkConfig extends AbstractConfig {
   private static final String CONNECTION_USER_DOC = "JDBC connection user.";
   private static final String CONNECTION_USER_DISPLAY = "JDBC User";
 
-  public static final String CONNECTION_PASSWORD = "connection.password";
-  private static final String CONNECTION_PASSWORD_DOC = "JDBC connection password.";
-  private static final String CONNECTION_PASSWORD_DISPLAY = "JDBC Password";
+  public static final String CONNECTION_PASSWORD_PATH = "connection.password.path";
+  public static final String CONNECTION_PASSWORD_PATH_DOC = "JDBC connection password path that contains encrypted password";
+  private static final String CONNECTION_PASSWORD_PATH_DISPLAY = "Connection Password Path";
 
   public static final String TABLE_NAME_FORMAT = "table.name.format";
   private static final String TABLE_NAME_FORMAT_DEFAULT = "${topic}";
@@ -161,9 +161,9 @@ public class JdbcSinkConfig extends AbstractConfig {
       .define(CONNECTION_USER, ConfigDef.Type.STRING, null,
               ConfigDef.Importance.HIGH, CONNECTION_USER_DOC,
               CONNECTION_GROUP, 2, ConfigDef.Width.MEDIUM, CONNECTION_USER_DISPLAY)
-      .define(CONNECTION_PASSWORD, ConfigDef.Type.PASSWORD, null,
-              ConfigDef.Importance.HIGH, CONNECTION_PASSWORD_DOC,
-              CONNECTION_GROUP, 3, ConfigDef.Width.MEDIUM, CONNECTION_PASSWORD_DISPLAY)
+      .define(CONNECTION_PASSWORD_PATH, ConfigDef.Type.PASSWORD, null,
+              ConfigDef.Importance.HIGH, CONNECTION_PASSWORD_PATH_DOC,
+              CONNECTION_GROUP, 3, ConfigDef.Width.MEDIUM, CONNECTION_PASSWORD_PATH_DISPLAY)
       // Writes
       .define(INSERT_MODE, ConfigDef.Type.STRING, INSERT_MODE_DEFAULT, EnumValidator.in(InsertMode.values()),
               ConfigDef.Importance.HIGH, INSERT_MODE_DOC,
@@ -201,7 +201,7 @@ public class JdbcSinkConfig extends AbstractConfig {
 
   public final String connectionUrl;
   public final String connectionUser;
-  public final String connectionPassword;
+  public final String connectionPasswordPath;
   public final String tableNameFormat;
   public final int batchSize;
   public final int maxRetries;
@@ -217,7 +217,7 @@ public class JdbcSinkConfig extends AbstractConfig {
     super(CONFIG_DEF, props);
     connectionUrl = getString(CONNECTION_URL);
     connectionUser = getString(CONNECTION_USER);
-    connectionPassword = getPasswordValue(CONNECTION_PASSWORD);
+    connectionPasswordPath = getString(CONNECTION_PASSWORD_PATH);
     tableNameFormat = getString(TABLE_NAME_FORMAT).trim();
     batchSize = getInt(BATCH_SIZE);
     maxRetries = getInt(MAX_RETRIES);

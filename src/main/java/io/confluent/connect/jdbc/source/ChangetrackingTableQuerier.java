@@ -47,7 +47,6 @@ public class ChangetrackingTableQuerier extends TableQuerier {
   private String incrementingColumn;
   private ChangetrackingOffset offset;
   private String dynamicSql;
-  private Connection connection;
 
   public ChangetrackingTableQuerier(QueryMode mode, String name, String topicPrefix,
                                            String incrementingColumn,
@@ -56,7 +55,6 @@ public class ChangetrackingTableQuerier extends TableQuerier {
     super(mode, name, topicPrefix, schemaPattern, config);
     this.incrementingColumn = incrementingColumn;
     this.offset = ChangetrackingOffset.fromMap(offsetMap);
-    this.connection = connection;
   }
 
   @Override
@@ -79,7 +77,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
 
     StringBuilder builder = new StringBuilder(getTransactionLevelString());
 
-    updateDynamicSql();
+    updateDynamicSql(db);
 
     switch (mode) {
       case TABLE:
@@ -210,7 +208,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
            '}';
   }
 
-  private void updateDynamicSql() {
+  private void updateDynamicSql(Connection connection) {
     try {
       String dynamicConnectorQuery = getDynamicConnectorQuery();
       PreparedStatement dynamicConnectorStatement = connection.prepareStatement(dynamicConnectorQuery);
