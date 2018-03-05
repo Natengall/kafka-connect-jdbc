@@ -16,6 +16,7 @@
 
 package io.confluent.connect.jdbc.source;
 
+import io.confluent.connect.jdbc.util.CachedConnectionProviderFactory;
 import io.confluent.connect.jdbc.util.JdbcUtils;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -26,7 +27,6 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigException;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -270,7 +270,11 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
       }
       Connection db;
       try {
-        db = DriverManager.getConnection(dbUrl);
+        db = CachedConnectionProviderFactory.getConnection(
+          dbUrl,
+          (String) config.get(CONNECTION_USERNAME_CONFIG),
+          (String) config.get(CONNECTION_PASSWORD_PATH_CONFIG)
+        ).getValidConnection();
         return new LinkedList<Object>(JdbcUtils.getTables(db, schemaPattern));
       } catch (SQLException e) {
         throw new ConfigException("Couldn't open connection to " + dbUrl, e);
