@@ -16,6 +16,7 @@
 
 package io.confluent.connect.jdbc.source;
 
+import io.confluent.connect.jdbc.util.CachedConnectionProvider;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -58,9 +59,9 @@ public class ChangetrackingTableQuerier extends TableQuerier {
   }
 
   @Override
-  public void maybeStartQuery(Connection db) throws SQLException {
+  public void maybeStartQuery(CachedConnectionProvider cachedConnectionProvider) throws SQLException {
     if (resultSet == null) {
-      stmt = getOrCreatePreparedStatement(db);
+      stmt = getOrCreatePreparedStatement(cachedConnectionProvider.getValidConnection());
       resultSet = executeQuery();
       schema = DataConverter.convertSchema(name, resultSet.getMetaData(), true);
     }
