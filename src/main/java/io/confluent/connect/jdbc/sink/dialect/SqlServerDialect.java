@@ -115,4 +115,18 @@ public class SqlServerDialect extends DbDialect {
     builder.append(");");
     return builder.toString();
   }
+
+  @Override
+  public String getDeleteQuery(final String tableName, final Collection<String> keyColumns) {
+    StringBuilder builder = new StringBuilder("DELETE FROM ");
+    builder.append(escaped(tableName));
+    builder.append(" WHERE ");
+    joinToBuilder(builder, " AND ", keyColumns, new StringBuilderUtil.Transform<String>() {
+      @Override
+      public void apply(StringBuilder builder, String col) {
+        builder.append(escaped(col)).append("= ? ");
+      }
+    });
+    return builder.toString();
+  }
 }

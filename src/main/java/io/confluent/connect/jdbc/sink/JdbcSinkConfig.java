@@ -34,7 +34,8 @@ public class JdbcSinkConfig extends AbstractConfig {
 
   public enum InsertMode {
     INSERT,
-    UPSERT;
+    UPSERT,
+    DELETE;
   }
 
   public enum PrimaryKeyMode {

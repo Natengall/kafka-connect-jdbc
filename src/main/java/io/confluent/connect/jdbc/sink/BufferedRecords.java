@@ -124,6 +124,13 @@ public class BufferedRecords {
           ));
         }
         return dbDialect.getUpsertQuery(tableName, fieldsMetadata.keyFieldNames, fieldsMetadata.nonKeyFieldNames);
+      case DELETE:
+        if (fieldsMetadata.keyFieldNames.isEmpty()) {
+          throw new ConnectException(String.format(
+                  "Deleting from table '%s' in DELETE mode requires key field names to be known, check the primary key configuration", tableName
+          ));
+        }
+        return dbDialect.getDeleteQuery(tableName, fieldsMetadata.keyFieldNames);
       default:
         throw new ConnectException("Invalid insert mode");
     }

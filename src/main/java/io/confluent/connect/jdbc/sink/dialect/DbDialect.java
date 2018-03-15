@@ -90,6 +90,10 @@ public abstract class DbDialect {
     throw new UnsupportedOperationException();
   }
 
+  public String getDeleteQuery(final String table, final Collection<String> keyColumns) {
+    throw new UnsupportedOperationException();
+  }
+
   public String getCreateQuery(String tableName, Collection<SinkRecordField> fields) {
     final List<String> pkFieldNames = extractPrimaryKeyFieldNames(fields);
     final StringBuilder builder = new StringBuilder();
