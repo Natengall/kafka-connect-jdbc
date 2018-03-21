@@ -190,6 +190,11 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   private static final String INITIAL_OFFSET_DOC =
       "The initial value for the offset for a connector to start polling data from.";
   private static final String INITIAL_OFFSET_DISPLAY = "Initial Offset";
+  
+  public static final String CHANGE_OPERATIONS_CONFIG = "change.operations";
+  private static final String CHANGE_OPERATIONS_DOC =
+      "Acceptable DML operations to produce to Kafka for changetracking mode.";
+  private static final String CHANGE_OPERATIONS_DISPLAY = "Change Operations";
 
   public static final String DATABASE_GROUP = "Database";
   public static final String MODE_GROUP = "Mode";
@@ -247,7 +252,8 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(TABLE_POLL_INTERVAL_MS_CONFIG, Type.LONG, TABLE_POLL_INTERVAL_MS_DEFAULT, Importance.LOW, TABLE_POLL_INTERVAL_MS_DOC, CONNECTOR_GROUP, 3, Width.SHORT, TABLE_POLL_INTERVAL_MS_DISPLAY)
         .define(TOPIC_PREFIX_CONFIG, Type.STRING, Importance.HIGH, TOPIC_PREFIX_DOC, CONNECTOR_GROUP, 4, Width.MEDIUM, TOPIC_PREFIX_DISPLAY)
         .define(TIMESTAMP_DELAY_INTERVAL_MS_CONFIG, Type.LONG, TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT, Importance.HIGH, TIMESTAMP_DELAY_INTERVAL_MS_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, TIMESTAMP_DELAY_INTERVAL_MS_DISPLAY)
-        .define(INITIAL_OFFSET_CONFIG, Type.LONG, null, Importance.MEDIUM, INITIAL_OFFSET_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, INITIAL_OFFSET_DISPLAY);
+        .define(INITIAL_OFFSET_CONFIG, Type.LONG, null, Importance.MEDIUM, INITIAL_OFFSET_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, INITIAL_OFFSET_DISPLAY)
+        .define(CHANGE_OPERATIONS_CONFIG, Type.STRING, null, Importance.MEDIUM, CHANGE_OPERATIONS_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, CHANGE_OPERATIONS_DISPLAY);
   }
 
   public static final ConfigDef CONFIG_DEF = baseConfigDef();

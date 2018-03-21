@@ -47,6 +47,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
 
   private String incrementingColumn;
   private ChangetrackingOffset offset;
+  private String operations;
   private String dynamicSql;
 
   public ChangetrackingTableQuerier(QueryMode mode, String name, String topicPrefix,
@@ -56,6 +57,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
     super(mode, name, topicPrefix, schemaPattern, config);
     this.incrementingColumn = incrementingColumn;
     this.offset = ChangetrackingOffset.fromMap(offsetMap);
+    this.operations = config.getString(JdbcSourceConnectorConfig.CHANGE_OPERATIONS_CONFIG);
   }
 
   @Override
@@ -236,6 +238,6 @@ public class ChangetrackingTableQuerier extends TableQuerier {
       "STUFF(( select ' , '+ 'P.'+ COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name AND COLUMN_NAME NOT IN (SELECT COLUMN_NAME FROM #kc_primary_keys) FOR XML PATH('') ), 1, 1, '') + " +
       "', SYS_CHANGE_VERSION, SYS_CHANGE_OPERATION,' +  " +
       "STUFF(( select ', '+ 'CHANGE_TRACKING_IS_COLUMN_IN_MASK (COLUMNPROPERTY(OBJECT_ID(''' + @db_name + '.dbo.' + @table_name + '''), ''' + COLUMN_NAME + ''', ''ColumnId''), SYS_CHANGE_COLUMNS) AS Change_' + COLUMN_NAME  from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @table_name FOR XML PATH('') ), 1, 1, ''); " +
-      "SELECT 'SELECT ' + @columns + ' FROM CHANGETABLE (CHANGES ' + @db_name + '.dbo.' + @table_name + ', ?) AS CT LEFT OUTER JOIN ' + @db_name + '.dbo.' + @table_name + ' AS P ON ' + @pk_equals; ";
+      "SELECT 'SELECT ' + @columns + ' INTO #temp FROM CHANGETABLE (CHANGES ' + @db_name + '.dbo.' + @table_name + ', ?) AS CT LEFT OUTER JOIN ' + @db_name + '.dbo.' + @table_name + ' AS P ON ' + @pk_equals + '" + (this.operations == null || this.operations == "" ? "" : " WHERE SYS_CHANGE_OPERATION IN (" + this.operations + ") ") + "; SELECT * FROM #temp '";
   }
 }
