@@ -113,11 +113,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jasypt</groupId>
-            <artifactId>jasypt</artifactId>
-            <version>1.9.2</version>
-        </dependency>
-        <dependency>
             <groupId>org.easymock</groupId>
             <artifactId>easymock</artifactId>
             <version>${easymock.version}</version>
@@ -159,10 +154,30 @@
             <version>${slf4j.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+          <groupId>com.wayfair.crypto</groupId>
+          <artifactId>crypto</artifactId>
+          <version>2.0.0</version>
+        </dependency>
+        
     </dependencies>
 
     <build>
         <plugins>
+      <plugin>
+      <artifactId>maven-shade-plugin</artifactId>
+      <version>2.4.3</version>
+      <executions>
+        <execution>
+          <id>shade</id>
+          <goals>
+            <goal>shade</goal>
+          </goals>
+          <phase>package</phase>
+          </execution>
+        </executions>
+      </plugin>
+        
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
