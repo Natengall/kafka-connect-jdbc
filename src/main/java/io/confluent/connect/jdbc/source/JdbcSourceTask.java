@@ -121,6 +121,8 @@ public class JdbcSourceTask extends SourceTask {
         = config.getString(JdbcSourceTaskConfig.PARTITION_COLUMN_NAME_CONFIG);
     String keyColumn
         = config.getString(JdbcSourceTaskConfig.KEY_COLUMN_NAME_CONFIG);
+    String keyFormat
+        = config.getString(JdbcSourceTaskConfig.KEY_FORMAT_CONFIG);
     String incrementingColumn
         = config.getString(JdbcSourceTaskConfig.INCREMENTING_COLUMN_NAME_CONFIG);
     String timestampColumn

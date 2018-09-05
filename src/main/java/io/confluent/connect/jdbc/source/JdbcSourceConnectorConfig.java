@@ -108,6 +108,12 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String KEY_COLUMN_NAME_DEFAULT = "";
   private static final String KEY_COLUMN_NAME_DISPLAY = "Key Column Name";
 
+  public static final String KEY_FORMAT_CONFIG = "key.format";
+  private static final String KEY_FORMAT_DOC =
+      "A string the represents the series of columns to piece together to attach to the Kafka record." 
+      + "If provided, overrides the value of key.column.name";
+  private static final String KEY_FORMAT_DISPLAY = "Key Format";
+
   public static final String INCREMENTING_COLUMN_NAME_CONFIG = "incrementing.column.name";
   private static final String INCREMENTING_COLUMN_NAME_DOC =
       "The name of the strictly incrementing column to use to detect new rows. Any empty value "
@@ -240,6 +246,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
                 Importance.HIGH, TRANSACTION_ISOLATION_LEVEL_DOC, TRANSACTION_ISOLATION_LEVEL_GROUP, 1, Width.MEDIUM, TRANSACTION_ISOLATION_LEVEL_DISPLAY)
         .define(PARTITION_COLUMN_NAME_CONFIG, Type.STRING, PARTITION_COLUMN_NAME_DEFAULT, Importance.MEDIUM, PARTITION_COLUMN_NAME_DOC, DATABASE_GROUP, 2, Width.MEDIUM, PARTITION_COLUMN_NAME_DISPLAY)
         .define(KEY_COLUMN_NAME_CONFIG, Type.STRING, KEY_COLUMN_NAME_DEFAULT, Importance.MEDIUM, KEY_COLUMN_NAME_DOC, DATABASE_GROUP, 2, Width.MEDIUM, KEY_COLUMN_NAME_DISPLAY)
+        .define(KEY_FORMAT_CONFIG, Type.STRING, null, Importance.MEDIUM, KEY_FORMAT_DOC, DATABASE_GROUP, 2, Width.MEDIUM, KEY_FORMAT_DISPLAY)
         .define(INCREMENTING_COLUMN_NAME_CONFIG, Type.STRING, INCREMENTING_COLUMN_NAME_DEFAULT, Importance.MEDIUM, INCREMENTING_COLUMN_NAME_DOC, MODE_GROUP, 2, Width.MEDIUM, INCREMENTING_COLUMN_NAME_DISPLAY,
                 MODE_DEPENDENTS_RECOMMENDER)
         .define(TIMESTAMP_COLUMN_NAME_CONFIG, Type.STRING, TIMESTAMP_COLUMN_NAME_DEFAULT, Importance.MEDIUM, TIMESTAMP_COLUMN_NAME_DOC, MODE_GROUP, 3, Width.MEDIUM, TIMESTAMP_COLUMN_NAME_DISPLAY,

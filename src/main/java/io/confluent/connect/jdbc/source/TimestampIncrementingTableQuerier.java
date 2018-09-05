@@ -34,6 +34,8 @@ import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.confluent.connect.jdbc.util.JdbcUtils;
 
@@ -218,13 +220,29 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       }
     }
 
+    String keyValue = null;
+    if (keyFormat == null) {
+      if (!keyColumn.isEmpty()) {
+        keyValue = (String) record.get(keyColumn);
+      }
+    } else {
+      Pattern p = Pattern.compile("\\$\\(\\w+\\)");
+      Matcher m = p.matcher(keyFormat);
+      while (m.find()) {
+        String match = m.group();
+        String column = match.substring(2, match.length() - 1);
+        System.out.println(match);
+        System.out.println(record.get(column));
+      }
+    }
+
     return new SourceRecord(
       partition,
       offset.toMap(),
       topic,
       partitionColumn.isEmpty() ? null : partitionValue,
-      keyColumn.isEmpty() ? null : schema.field(keyColumn).schema(),
-      keyColumn.isEmpty() ? null : record.get(keyColumn),
+      keyColumn.isEmpty() ? null : Schema.STRING_SCHEMA,
+      keyValue,
       record.schema(),
       record
     );

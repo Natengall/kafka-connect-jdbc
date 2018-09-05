@@ -125,6 +125,7 @@ public class JdbcSourceConnector extends SourceConnector {
       List<String> currentTables = tableMonitorThread.tables();
       int numGroups = Math.min(currentTables.size(), maxTasks);
       List<List<String>> tablesGrouped = ConnectorUtils.groupPartitions(currentTables, numGroups);
+      log.info("Tables grouped: " + tablesGrouped);
       List<Map<String, String>> taskConfigs = new ArrayList<>(tablesGrouped.size());
       for (List<String> taskTables : tablesGrouped) {
         Map<String, String> taskProps = new HashMap<>(configProperties);
