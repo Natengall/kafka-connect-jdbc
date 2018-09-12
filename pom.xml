@@ -92,6 +92,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.wayfair.crypto</groupId>
+            <artifactId>crypto</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
          <!-- JDBC drivers, only included in runtime so they get packaged -->
         <dependency>
             <groupId>org.xerial</groupId>
@@ -103,6 +109,12 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>9.4-1206-jdbc41</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>7.0.0.jre8</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -154,29 +166,23 @@
             <version>${slf4j.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-          <groupId>com.wayfair.crypto</groupId>
-          <artifactId>crypto</artifactId>
-          <version>2.0.0</version>
-        </dependency>
-        
     </dependencies>
 
     <build>
         <plugins>
-      <plugin>
-      <artifactId>maven-shade-plugin</artifactId>
-      <version>2.4.3</version>
-      <executions>
-        <execution>
-          <id>shade</id>
-          <goals>
-            <goal>shade</goal>
-          </goals>
-          <phase>package</phase>
-          </execution>
-        </executions>
-      </plugin>
+            <plugin>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.3</version>
+                <executions>
+                    <execution>
+                        <id>shade</id>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <phase>package</phase>
+                    </execution>
+                </executions>
+            </plugin>
         
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
