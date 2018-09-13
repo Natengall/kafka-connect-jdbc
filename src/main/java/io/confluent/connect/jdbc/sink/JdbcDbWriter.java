@@ -41,7 +41,7 @@ public class JdbcDbWriter {
     this.dbDialect = dbDialect;
     this.dbStructure = dbStructure;
 
-    this.cachedConnectionProvider = CachedConnectionProviderFactory.getConnection(config.connectionUrl, config.connectionUser, config.connectionPasswordPath);
+    this.cachedConnectionProvider = CachedConnectionProviderFactory.getConnection(config.connectionUrl, config.connectionUser);
   }
 
   void write(final Collection<SinkRecord> records) throws SQLException {

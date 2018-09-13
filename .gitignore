@@ -1,5 +1,6 @@
 # Build products
 target/
+dependency-reduced-pom.xml
 
 # IntelliJ data
 *.iml

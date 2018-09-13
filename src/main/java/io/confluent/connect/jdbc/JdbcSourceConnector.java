@@ -74,8 +74,7 @@ public class JdbcSourceConnector extends SourceConnector {
 
     cachedConnectionProvider = CachedConnectionProviderFactory.getConnection(
       config.getString(JdbcSourceTaskConfig.CONNECTION_URL_CONFIG),
-      config.getString(JdbcSourceTaskConfig.CONNECTION_USERNAME_CONFIG),
-      config.getString(JdbcSourceTaskConfig.CONNECTION_PASSWORD_PATH_CONFIG));
+      config.getString(JdbcSourceTaskConfig.CONNECTION_USERNAME_CONFIG));
 
     // Initial connection attempt
     cachedConnectionProvider.getValidConnection();

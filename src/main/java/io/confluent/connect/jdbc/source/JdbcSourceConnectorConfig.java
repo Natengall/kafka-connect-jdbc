@@ -43,10 +43,6 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String CONNECTION_USERNAME_DOC = "JDBC connection username for the database to send queries under";
   private static final String CONNECTION_USERNAME_DISPLAY = "Connection Username";
 
-  public static final String CONNECTION_PASSWORD_PATH_CONFIG = "connection.password.path";
-  public static final String CONNECTION_PASSWORD_PATH_DOC = "JDBC connection password path that contains encrypted password";
-  private static final String CONNECTION_PASSWORD_PATH_DISPLAY = "Connection Password Path";
-
   public static final String POLL_INTERVAL_MS_CONFIG = "poll.interval.ms";
   private static final String POLL_INTERVAL_MS_DOC = "Frequency in ms to poll for new data in "
                                                      + "each table.";
@@ -238,7 +234,6 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(TABLE_TYPE_CONFIG, Type.LIST, TABLE_TYPE_DEFAULT, Importance.LOW,
                 TABLE_TYPE_DOC, CONNECTOR_GROUP, 4, Width.MEDIUM, TABLE_TYPE_DISPLAY)
         .define(CONNECTION_USERNAME_CONFIG, Type.STRING, Importance.LOW, CONNECTION_USERNAME_DOC, DATABASE_GROUP, 5, Width.LONG, CONNECTION_USERNAME_DISPLAY)
-        .define(CONNECTION_PASSWORD_PATH_CONFIG, Type.STRING, Importance.LOW, CONNECTION_PASSWORD_PATH_DOC, DATABASE_GROUP, 6, Width.LONG, CONNECTION_PASSWORD_PATH_DISPLAY)
         .define(MODE_CONFIG, Type.STRING, MODE_UNSPECIFIED, ConfigDef.ValidString.in(MODE_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP, MODE_INCREMENTING, MODE_TIMESTAMP_INCREMENTING, MODE_CHANGETRACKING),
                 Importance.HIGH, MODE_DOC, MODE_GROUP, 1, Width.MEDIUM, MODE_DISPLAY, Arrays.asList(INCREMENTING_COLUMN_NAME_CONFIG, TIMESTAMP_COLUMN_NAME_CONFIG, VALIDATE_NON_NULL_CONFIG))
         .define(TRANSACTION_ISOLATION_LEVEL_CONFIG, Type.STRING, TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED, ConfigDef.ValidString.in(TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP,
@@ -285,8 +280,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
       try {
         db = CachedConnectionProviderFactory.getConnection(
           dbUrl,
-          (String) config.get(CONNECTION_USERNAME_CONFIG),
-          (String) config.get(CONNECTION_PASSWORD_PATH_CONFIG)
+          (String) config.get(CONNECTION_USERNAME_CONFIG)
         ).getValidConnection();
         return new LinkedList<Object>(JdbcUtils.getTables(db, schemaPattern));
       } catch (SQLException e) {

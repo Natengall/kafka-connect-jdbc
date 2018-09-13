@@ -77,8 +77,7 @@ public class JdbcSourceTask extends SourceTask {
 
     cachedConnectionProvider = CachedConnectionProviderFactory.getConnection(
         config.getString(JdbcSourceTaskConfig.CONNECTION_URL_CONFIG),
-        config.getString(JdbcSourceTaskConfig.CONNECTION_USERNAME_CONFIG),
-        config.getString(JdbcSourceTaskConfig.CONNECTION_PASSWORD_PATH_CONFIG));
+        config.getString(JdbcSourceTaskConfig.CONNECTION_USERNAME_CONFIG));
 
     List<String> tables = config.getList(JdbcSourceTaskConfig.TABLES_CONFIG);
     String query = config.getString(JdbcSourceTaskConfig.QUERY_CONFIG);

@@ -19,7 +19,7 @@ package io.confluent.connect.jdbc.util;
 import com.wayfair.crypto.Passwords;
 
 public class CachedConnectionProviderFactory {
-  public static CachedConnectionProvider getConnection(String url, String username, String passwordPath) {
+  public static CachedConnectionProvider getConnection(String url, String username) {
     return username.isEmpty() ? new CachedConnectionProvider(url) : new CachedConnectionProvider(url, username, Passwords.getCredential(username));
   }
 }
