@@ -47,7 +47,7 @@ public class BulkTableQuerier extends TableQuerier {
     switch (mode) {
       case TABLE:
         String quoteString = JdbcUtils.getIdentifierQuoteString(db);
-        builder.append("SELECT * FROM " + JdbcUtils.quoteString(name, quoteString));
+        builder.append("SELECT * FROM " + JdbcUtils.quoteString(name, quoteString) + " WITH (NOLOCK)");
         break;
       case QUERY:
         builder.append(query);

@@ -93,6 +93,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       case TABLE:
         builder.append("SELECT * FROM ");
         builder.append(JdbcUtils.quoteString(name, quoteString));
+        builder.append(" WITH (NOLOCK)");
         break;
       case QUERY:
         builder.append(query);
