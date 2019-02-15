@@ -19,6 +19,8 @@ package io.confluent.connect.jdbc.source;
 import io.confluent.connect.jdbc.util.CachedConnectionProvider;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -31,6 +33,8 @@ import java.sql.SQLException;
  * loads using timestamps, etc.
  */
 abstract class TableQuerier implements Comparable<TableQuerier> {
+  private static final Logger log = LoggerFactory.getLogger(TableQuerier.class);
+
   public enum QueryMode {
     TABLE, // Copying whole tables, with queries constructed automatically
     QUERY // User-specified query
@@ -51,6 +55,7 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
   protected String keyColumn;
   protected String keyFormat;
   protected String transactionLevel;
+  protected String tag;
 
   static final String TRANSACTION_LEVEL_TEMPLATE = "SET TRANSACTION ISOLATION LEVEL ";
 
@@ -90,6 +95,12 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
     if (resultSet == null) {
       stmt = getOrCreatePreparedStatement(cachedConnectionProvider.getValidConnection());
       resultSet = executeQuery();
+
+      if (resultSet.last()) {
+        int rowCount = resultSet.getRow();
+        log.info((tag == null ? "" : "[" + tag + "]") + topicPrefix + (name == null ? "" : name) + " fetched " + rowCount + " rows.");
+        resultSet.beforeFirst(); // not rs.first() because the rs.next() below will move on, missing the first element
+      }
       schema = DataConverter.convertSchema(name, resultSet.getMetaData());
     }
   }

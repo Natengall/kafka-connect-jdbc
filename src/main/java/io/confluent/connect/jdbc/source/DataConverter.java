@@ -50,10 +50,10 @@ public class DataConverter {
   private static final String CHANGE_PREFIX = "Change_";
   private static final String SYS_CHANGE_PREFIX =  "SYS_CHANGE_";
 
-  private static final ThreadLocal<Calendar> UTC_CALENDAR = new ThreadLocal<Calendar>() {
+  private static final ThreadLocal<Calendar> EST_CALENDAR = new ThreadLocal<Calendar>() {
     @Override
     protected Calendar initialValue() {
-      return new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+      return new GregorianCalendar(TimeZone.getTimeZone("EST"));
     }
   };
 
@@ -259,6 +259,7 @@ public class DataConverter {
       }
 
       // Timestamp is a date + time
+      case -155: //datetimeoffset
       case Types.TIMESTAMP: {
         SchemaBuilder tsSchemaBuilder = Timestamp.builder();
         if (optional) {
@@ -380,19 +381,20 @@ public class DataConverter {
 
       // Date is day + moth + year
       case Types.DATE: {
-        colValue = resultSet.getDate(col, UTC_CALENDAR.get());
+        colValue = resultSet.getDate(col, EST_CALENDAR.get());
         break;
       }
 
       // Time is a time of day -- hour, minute, seconds, nanoseconds
       case Types.TIME: {
-        colValue = resultSet.getTime(col, UTC_CALENDAR.get());
+        colValue = resultSet.getTime(col, EST_CALENDAR.get());
         break;
       }
 
       // Timestamp is a date + time
+      case -155: //datetimeoffset
       case Types.TIMESTAMP: {
-        colValue = resultSet.getTimestamp(col, UTC_CALENDAR.get());
+        colValue = resultSet.getTimestamp(col, EST_CALENDAR.get());
         break;
       }
 

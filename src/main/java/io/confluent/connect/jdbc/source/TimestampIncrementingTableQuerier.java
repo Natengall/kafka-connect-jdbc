@@ -16,6 +16,7 @@
 
 package io.confluent.connect.jdbc.source;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -34,8 +35,6 @@ import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import io.confluent.connect.jdbc.util.JdbcUtils;
 
@@ -59,13 +58,14 @@ import io.confluent.connect.jdbc.util.JdbcUtils;
 public class TimestampIncrementingTableQuerier extends TableQuerier {
   private static final Logger log = LoggerFactory.getLogger(TimestampIncrementingTableQuerier.class);
 
-  private static final Calendar UTC_CALENDAR = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+  private static final Calendar EST_CALENDAR = new GregorianCalendar(TimeZone.getTimeZone("EST"));
   private static final BigDecimal LONG_MAX_VALUE_AS_BIGDEC = new BigDecimal(Long.MAX_VALUE);
 
   private String timestampColumn;
   private String incrementingColumn;
   private long timestampDelay;
   private TimestampIncrementingOffset offset;
+  private Boolean timestampGte = false;
 
   public TimestampIncrementingTableQuerier(QueryMode mode, String name, String topicPrefix,
                                            String timestampColumn, String incrementingColumn,
@@ -76,6 +76,9 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
     this.incrementingColumn = incrementingColumn;
     this.timestampDelay = timestampDelay;
     this.offset = TimestampIncrementingOffset.fromMap(offsetMap);
+    try {
+      this.timestampGte = config.getBoolean("timestamp.gte");
+    } catch (ConfigException e) { }
   }
 
   @Override
@@ -141,15 +144,16 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
     } else if (timestampColumn != null) {
       builder.append(" WHERE ");
       builder.append(JdbcUtils.quoteString(timestampColumn, quoteString));
-      builder.append(" > ? AND ");
+      builder.append(timestampGte ? " >= " : " > ");
+      builder.append(" ? AND ");
       builder.append(JdbcUtils.quoteString(timestampColumn, quoteString));
       builder.append(" < ? ORDER BY ");
       builder.append(JdbcUtils.quoteString(timestampColumn, quoteString));
       builder.append(" ASC");
     }
     String queryString = builder.toString();
-    log.debug("{} prepared SQL query: {}", this, queryString);
-    stmt = db.prepareStatement(queryString);
+    log.info("{} prepared SQL query: {}", this, queryString);
+    stmt = db.prepareStatement(queryString, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
   }
 
   @Override
@@ -157,14 +161,14 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
     if (incrementingColumn != null && timestampColumn != null) {
       Timestamp tsOffset = offset.getTimestampOffset();
       Long incOffset = offset.getIncrementingOffset();
-      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), UTC_CALENDAR).getTime() - timestampDelay);
-      stmt.setTimestamp(1, endTime, UTC_CALENDAR);
-      stmt.setTimestamp(2, tsOffset, UTC_CALENDAR);
+      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), EST_CALENDAR).getTime() - timestampDelay);
+      stmt.setTimestamp(1, endTime, EST_CALENDAR);
+      stmt.setTimestamp(2, tsOffset, EST_CALENDAR);
       stmt.setLong(3, incOffset);
-      stmt.setTimestamp(4, tsOffset, UTC_CALENDAR);
+      stmt.setTimestamp(4, tsOffset, EST_CALENDAR);
       log.debug("Executing prepared statement with start time value = {} end time = {} and incrementing value = {}",
-              JdbcUtils.formatUTC(tsOffset),
-              JdbcUtils.formatUTC(endTime),
+              JdbcUtils.formatEST(tsOffset),
+              JdbcUtils.formatEST(endTime),
               incOffset);
     } else if (incrementingColumn != null) {
       Long incOffset = offset.getIncrementingOffset();
@@ -172,12 +176,12 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       log.debug("Executing prepared statement with incrementing value = {}", incOffset);
     } else if (timestampColumn != null) {
       Timestamp tsOffset = offset.getTimestampOffset();
-      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), UTC_CALENDAR).getTime() - timestampDelay);
-      stmt.setTimestamp(1, tsOffset, UTC_CALENDAR);
-      stmt.setTimestamp(2, endTime, UTC_CALENDAR);
+      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), EST_CALENDAR).getTime() - timestampDelay);
+      stmt.setTimestamp(1, tsOffset, EST_CALENDAR);
+      stmt.setTimestamp(2, endTime, EST_CALENDAR);
       log.debug("Executing prepared statement with timestamp value = {} end time = {}",
-              JdbcUtils.formatUTC(tsOffset),
-              JdbcUtils.formatUTC(endTime));
+              JdbcUtils.formatEST(tsOffset),
+              JdbcUtils.formatEST(endTime));
     }
     return stmt.executeQuery();
   }
@@ -221,29 +225,13 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       }
     }
 
-    String keyValue = null;
-    if (keyFormat == null) {
-      if (!keyColumn.isEmpty()) {
-        keyValue = (String) record.get(keyColumn);
-      }
-    } else {
-      Pattern p = Pattern.compile("\\$\\(\\w+\\)");
-      Matcher m = p.matcher(keyFormat);
-      while (m.find()) {
-        String match = m.group();
-        String column = match.substring(2, match.length() - 1);
-        System.out.println(match);
-        System.out.println(record.get(column));
-      }
-    }
-
     return new SourceRecord(
       partition,
       offset.toMap(),
       topic,
       partitionColumn.isEmpty() ? null : partitionValue,
-      keyColumn.isEmpty() ? null : Schema.STRING_SCHEMA,
-      keyValue,
+      keyColumn.isEmpty() ? null : schema.field(keyColumn).schema(),
+      keyColumn.isEmpty() ? null : record.get(keyColumn),
       record.schema(),
       record
     );

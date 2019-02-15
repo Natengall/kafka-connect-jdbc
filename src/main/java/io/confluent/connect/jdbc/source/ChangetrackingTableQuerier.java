@@ -61,15 +61,6 @@ public class ChangetrackingTableQuerier extends TableQuerier {
   }
 
   @Override
-  public void maybeStartQuery(CachedConnectionProvider cachedConnectionProvider) throws SQLException {
-    if (resultSet == null) {
-      stmt = getOrCreatePreparedStatement(cachedConnectionProvider.getValidConnection());
-      resultSet = executeQuery();
-      schema = DataConverter.convertSchema(name, resultSet.getMetaData(), true);
-    }
-  }
-
-  @Override
   protected void createPreparedStatement(Connection db) throws SQLException {
     // Default when unspecified uses an autoincrementing column
     if (incrementingColumn != null && incrementingColumn.isEmpty()) {
@@ -98,7 +89,17 @@ public class ChangetrackingTableQuerier extends TableQuerier {
     }
     String connectorSql = builder.toString();
     log.debug("{} prepared SQL query: {}", this, connectorSql);
-    stmt = db.prepareStatement(connectorSql);
+    stmt = db.prepareStatement(connectorSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+  }
+
+
+  @Override
+  public void maybeStartQuery(CachedConnectionProvider cachedConnectionProvider) throws SQLException {
+    if (resultSet == null) {
+      stmt = getOrCreatePreparedStatement(cachedConnectionProvider.getValidConnection());
+      resultSet = executeQuery();
+      schema = DataConverter.convertSchema(name, resultSet.getMetaData(), true);
+    }
   }
 
   @Override
@@ -106,7 +107,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
     if (incrementingColumn != null) {
       Long incOffset = offset.getIncrementingOffset();
       stmt.setLong(1, incOffset);
-      log.debug("Executing prepared statement with incrementing value = {}", incOffset);
+      log.info("{}: Executing prepared statement with incrementing value = {}", this, incOffset);
     }
     return stmt.executeQuery();
   }

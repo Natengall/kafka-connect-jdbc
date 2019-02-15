@@ -66,7 +66,7 @@ public class JdbcUtils {
     @Override
     protected SimpleDateFormat initialValue() {
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-      sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+      sdf.setTimeZone(TimeZone.getTimeZone("EST"));
       return sdf;
     }
   };
@@ -165,11 +165,11 @@ public class JdbcUtils {
   }
 
   /**
-   * Format the given Date assuming UTC timezone in a format supported by SQL.
+   * Format the given Date assuming EST timezone in a format supported by SQL.
    * @param date the date to convert to a String
    * @return the formatted string
    */
-  public static String formatUTC(Date date) {
+  public static String formatEST(Date date) {
     return DATE_FORMATTER.get().format(date);
   }
 

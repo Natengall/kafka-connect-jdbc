@@ -21,7 +21,7 @@
     <groupId>io.confluent</groupId>
     <artifactId>kafka-connect-jdbc</artifactId>
     <packaging>jar</packaging>
-    <version>3.1.0.17-SNAPSHOT</version>
+    <version>3.1.0.17</version>
     <name>kafka-connect-jdbc</name>
     <organization>
         <name>Confluent, Inc.</name>
@@ -117,11 +117,16 @@
             <version>9.4-1206-jdbc41</version>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
+        <!-- <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
             <version>7.0.0.jre8</version>
             <scope>runtime</scope>
+        </dependency> -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>sqljdbc4</artifactId>
+            <version>4.0</version>
         </dependency>
 
         <dependency>

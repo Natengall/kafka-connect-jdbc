@@ -16,21 +16,22 @@
 
 package io.confluent.connect.jdbc.sink;
 
+import io.confluent.connect.jdbc.sink.dialect.DbDialect;
+import io.confluent.connect.jdbc.sink.metadata.FieldsMetadata;
+import io.confluent.connect.jdbc.sink.metadata.SchemaPair;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import io.confluent.connect.jdbc.sink.dialect.DbDialect;
-import io.confluent.connect.jdbc.sink.metadata.FieldsMetadata;
-import io.confluent.connect.jdbc.sink.metadata.SchemaPair;
 
 public class BufferedRecords {
   private static final Logger log = LoggerFactory.getLogger(BufferedRecords.class);
@@ -53,20 +54,28 @@ public class BufferedRecords {
     this.dbDialect = dbDialect;
     this.dbStructure = dbStructure;
     this.connection = connection;
+    MDC.put("table", tableName);
+    MDC.put("connectionUrl", config.connectionUrl);
+    MDC.put("connectionClient", connection.toString());
   }
 
   public List<SinkRecord> add(SinkRecord record) throws SQLException {
     final SchemaPair schemaPair = new SchemaPair(record.keySchema(), record.valueSchema());
 
     if (currentSchemaPair == null) {
-      currentSchemaPair = schemaPair;
-      // re-initialize everything that depends on the record schema
-      fieldsMetadata = FieldsMetadata.extract(tableName, config.pkMode, config.pkFields, config.fieldsWhitelist, currentSchemaPair);
-      dbStructure.createOrAmendIfNecessary(config, connection, tableName, fieldsMetadata);
-      final String insertSql = getInsertSql();
-      log.info("{} sql: {}\nrecord: {}", config.insertMode, insertSql, record);
-      preparedStatement = connection.prepareStatement(insertSql);
-      preparedStatementBinder = new PreparedStatementBinder(preparedStatement, config.pkMode, schemaPair, fieldsMetadata);
+      try {
+        currentSchemaPair = schemaPair;
+        // re-initialize everything that depends on the record schema
+        fieldsMetadata = FieldsMetadata.extract(tableName, config.pkMode, config.pkFields, config.fieldsWhitelist, currentSchemaPair);
+        dbStructure.createOrAmendIfNecessary(config, connection, tableName, fieldsMetadata);
+        final String insertSql = getInsertSql();
+        log.debug("{} sql: {}\nrecord: {}", config.insertMode, insertSql, record);
+        preparedStatement = connection.prepareStatement(insertSql);
+        preparedStatementBinder = new PreparedStatementBinder(preparedStatement, config.pkMode, schemaPair, fieldsMetadata);
+      } catch (Exception e) {
+        log.error("Exception on adding record", e);
+        return Collections.emptyList();
+      }
     }
 
     final List<SinkRecord> flushed;
@@ -94,17 +103,27 @@ public class BufferedRecords {
     for (SinkRecord record : records) {
       preparedStatementBinder.bindRecord(record);
     }
-    int totalUpdateCount = 0;
-    for (int updateCount : preparedStatement.executeBatch()) {
-      totalUpdateCount += updateCount;
+
+    int[] updateCounts;
+    String connectorName = config.originals().get("name").toString();
+
+    try {
+      updateCounts = preparedStatement.executeBatch();
+    } catch (BatchUpdateException bue) {
+      updateCounts = bue.getUpdateCounts();
+      log.error(connectorName + " reported a DB error: " + bue.getMessage() + ";\n" + preparedStatement);
     }
-    if (totalUpdateCount != records.size()) {
-      switch (config.insertMode) {
-        case INSERT:
-          throw new ConnectException(String.format("Update count (%d) did not sum up to total number of records inserted (%d)",
-                                                   totalUpdateCount, records.size()));
-        case UPSERT:
-          log.trace("Upserted records:{} resulting in in totalUpdateCount:{}", records.size(), totalUpdateCount);
+
+    List<SinkRecord> failedRecords = new ArrayList<>();
+    for (int i = 0; i < updateCounts.length; i++) {
+      if (updateCounts[i] != 1) {
+        failedRecords.add(records.get(i));
+      }
+    }
+
+    if (failedRecords.size() > 0) {
+      for (SinkRecord record : failedRecords) {
+        log.error(connectorName + " - Failed message: {}", record.value());
       }
     }
 
