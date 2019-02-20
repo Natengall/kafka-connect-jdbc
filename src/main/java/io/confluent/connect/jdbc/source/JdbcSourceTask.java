@@ -90,7 +90,6 @@ public class JdbcSourceTask extends SourceTask {
     List<String> tablesOrQuery = queryMode == TableQuerier.QueryMode.QUERY ?
                                  Collections.singletonList(query) : tables;
 
-    String transactionLevel = config.getString(JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_CONFIG);
     String mode = config.getString(JdbcSourceTaskConfig.MODE_CONFIG);
     Map<Map<String, String>, Map<String, Object>> offsets = null;
     if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING) ||
@@ -116,12 +115,6 @@ public class JdbcSourceTask extends SourceTask {
 
     String schemaPattern
         = config.getString(JdbcSourceTaskConfig.SCHEMA_PATTERN_CONFIG);
-    String partitionColumn
-        = config.getString(JdbcSourceTaskConfig.PARTITION_COLUMN_NAME_CONFIG);
-    String keyColumn
-        = config.getString(JdbcSourceTaskConfig.KEY_COLUMN_NAME_CONFIG);
-    String keyFormat
-        = config.getString(JdbcSourceTaskConfig.KEY_FORMAT_CONFIG);
     String incrementingColumn
         = config.getString(JdbcSourceTaskConfig.INCREMENTING_COLUMN_NAME_CONFIG);
     String timestampColumn

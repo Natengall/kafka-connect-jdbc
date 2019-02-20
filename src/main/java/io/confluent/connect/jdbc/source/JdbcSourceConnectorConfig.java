@@ -18,6 +18,7 @@ package io.confluent.connect.jdbc.source;
 
 import io.confluent.connect.jdbc.util.CachedConnectionProviderFactory;
 import io.confluent.connect.jdbc.util.JdbcUtils;
+
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -28,10 +29,12 @@ import org.apache.kafka.common.config.ConfigException;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 public class JdbcSourceConnectorConfig extends AbstractConfig {
 
@@ -188,6 +191,13 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final long TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT = 0;
   private static final String TIMESTAMP_DELAY_INTERVAL_MS_DISPLAY = "Delay Interval (ms)";
 
+  public static final String DB_TIMEZONE_CONFIG = "db.timezone";
+  public static final String DB_TIMEZONE_DEFAULT = "EST";
+  private static final String DB_TIMEZONE_DOC =
+      "Name of the JDBC timezone that should be used in the connector when "
+      + "querying with time-based criteria. Defaults to EST.";
+  private static final String DB_TIMEZONE_CONFIG_DISPLAY = "DB time zone";
+
   public static final String INITIAL_OFFSET_CONFIG = "initial.offset";
   private static final String INITIAL_OFFSET_DOC =
       "The initial value for the offset for a connector to start polling data from.";
@@ -235,9 +245,8 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(TABLE_BLACKLIST_CONFIG, Type.LIST, TABLE_BLACKLIST_DEFAULT, Importance.MEDIUM, TABLE_BLACKLIST_DOC, DATABASE_GROUP, 3, Width.LONG, TABLE_BLACKLIST_DISPLAY,
                 TABLE_RECOMMENDER)
         .define(SCHEMA_PATTERN_CONFIG, Type.STRING, null, Importance.MEDIUM, SCHEMA_PATTERN_DOC, DATABASE_GROUP, 4, Width.SHORT, SCHEMA_PATTERN_DISPLAY)
-        .define(TABLE_TYPE_CONFIG, Type.LIST, TABLE_TYPE_DEFAULT, Importance.LOW,
-                TABLE_TYPE_DOC, CONNECTOR_GROUP, 4, Width.MEDIUM, TABLE_TYPE_DISPLAY)
-        .define(CONNECTION_USERNAME_CONFIG, Type.STRING, Importance.LOW, CONNECTION_USERNAME_DOC, DATABASE_GROUP, 5, Width.LONG, CONNECTION_USERNAME_DISPLAY)
+        .define(TABLE_TYPE_CONFIG, Type.LIST, TABLE_TYPE_DEFAULT, Importance.LOW, TABLE_TYPE_DOC, DATABASE_GROUP, 5, Width.MEDIUM, TABLE_TYPE_DISPLAY)
+        .define(CONNECTION_USERNAME_CONFIG, Type.STRING, Importance.LOW, CONNECTION_USERNAME_DOC, DATABASE_GROUP, 6, Width.LONG, CONNECTION_USERNAME_DISPLAY)
         .define(MODE_CONFIG, Type.STRING, MODE_UNSPECIFIED, ConfigDef.ValidString.in(MODE_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP, MODE_INCREMENTING, MODE_TIMESTAMP_INCREMENTING, MODE_CHANGETRACKING),
                 Importance.HIGH, MODE_DOC, MODE_GROUP, 1, Width.MEDIUM, MODE_DISPLAY, Arrays.asList(INCREMENTING_COLUMN_NAME_CONFIG, TIMESTAMP_COLUMN_NAME_CONFIG, VALIDATE_NON_NULL_CONFIG))
         .define(TRANSACTION_ISOLATION_LEVEL_CONFIG, Type.STRING, TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED, ConfigDef.ValidString.in(TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP,
@@ -258,8 +267,9 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(TABLE_POLL_INTERVAL_MS_CONFIG, Type.LONG, TABLE_POLL_INTERVAL_MS_DEFAULT, Importance.LOW, TABLE_POLL_INTERVAL_MS_DOC, CONNECTOR_GROUP, 3, Width.SHORT, TABLE_POLL_INTERVAL_MS_DISPLAY)
         .define(TOPIC_PREFIX_CONFIG, Type.STRING, Importance.HIGH, TOPIC_PREFIX_DOC, CONNECTOR_GROUP, 4, Width.MEDIUM, TOPIC_PREFIX_DISPLAY)
         .define(TIMESTAMP_DELAY_INTERVAL_MS_CONFIG, Type.LONG, TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT, Importance.HIGH, TIMESTAMP_DELAY_INTERVAL_MS_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, TIMESTAMP_DELAY_INTERVAL_MS_DISPLAY)
-        .define(INITIAL_OFFSET_CONFIG, Type.LONG, null, Importance.MEDIUM, INITIAL_OFFSET_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, INITIAL_OFFSET_DISPLAY)
-        .define(CHANGE_OPERATIONS_CONFIG, Type.STRING, null, Importance.MEDIUM, CHANGE_OPERATIONS_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, CHANGE_OPERATIONS_DISPLAY)
+        .define(DB_TIMEZONE_CONFIG, Type.STRING, DB_TIMEZONE_DEFAULT, Importance.MEDIUM, DB_TIMEZONE_DOC, CONNECTOR_GROUP, 6, Width.MEDIUM, DB_TIMEZONE_CONFIG_DISPLAY)
+        .define(INITIAL_OFFSET_CONFIG, Type.LONG, null, Importance.MEDIUM, INITIAL_OFFSET_DOC, CONNECTOR_GROUP, 7, Width.MEDIUM, INITIAL_OFFSET_DISPLAY)
+        .define(CHANGE_OPERATIONS_CONFIG, Type.STRING, null, Importance.MEDIUM, CHANGE_OPERATIONS_DOC, CONNECTOR_GROUP, 8, Width.MEDIUM, CHANGE_OPERATIONS_DISPLAY)
         .define(TAG_CONFIG, Type.STRING, null, Importance.LOW, TAG_DOC, MODE_GROUP, 5, Width.SHORT, TAG_DISPLAY);
   }
 
@@ -330,6 +340,11 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
 
   protected JdbcSourceConnectorConfig(ConfigDef subclassConfigDef, Map<String, String> props) {
     super(subclassConfigDef, props);
+  }
+
+  public TimeZone timeZone() {
+    String dbTimeZone = getString(JdbcSourceTaskConfig.DB_TIMEZONE_CONFIG);
+    return TimeZone.getTimeZone(ZoneId.of(dbTimeZone));
   }
 
   public static void main(String[] args) {

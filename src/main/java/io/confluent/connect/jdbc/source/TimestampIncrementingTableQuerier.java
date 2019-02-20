@@ -30,7 +30,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.Map;
@@ -58,7 +57,6 @@ import io.confluent.connect.jdbc.util.JdbcUtils;
 public class TimestampIncrementingTableQuerier extends TableQuerier {
   private static final Logger log = LoggerFactory.getLogger(TimestampIncrementingTableQuerier.class);
 
-  private static final Calendar EST_CALENDAR = new GregorianCalendar(TimeZone.getTimeZone("EST"));
   private static final BigDecimal LONG_MAX_VALUE_AS_BIGDEC = new BigDecimal(Long.MAX_VALUE);
 
   private String timestampColumn;
@@ -66,6 +64,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
   private long timestampDelay;
   private TimestampIncrementingOffset offset;
   private Boolean timestampGte = false;
+  private final TimeZone timeZone;
 
   public TimestampIncrementingTableQuerier(QueryMode mode, String name, String topicPrefix,
                                            String timestampColumn, String incrementingColumn,
@@ -79,6 +78,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
     try {
       this.timestampGte = config.getBoolean("timestamp.gte");
     } catch (ConfigException e) { }
+    this.timeZone = config.timeZone();
   }
 
   @Override
@@ -161,11 +161,11 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
     if (incrementingColumn != null && timestampColumn != null) {
       Timestamp tsOffset = offset.getTimestampOffset();
       Long incOffset = offset.getIncrementingOffset();
-      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), EST_CALENDAR).getTime() - timestampDelay);
-      stmt.setTimestamp(1, endTime, EST_CALENDAR);
-      stmt.setTimestamp(2, tsOffset, EST_CALENDAR);
+      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), new GregorianCalendar(timeZone)).getTime() - timestampDelay);
+      stmt.setTimestamp(1, endTime, new GregorianCalendar(timeZone));
+      stmt.setTimestamp(2, tsOffset, new GregorianCalendar(timeZone));
       stmt.setLong(3, incOffset);
-      stmt.setTimestamp(4, tsOffset, EST_CALENDAR);
+      stmt.setTimestamp(4, tsOffset, new GregorianCalendar(timeZone));
       log.debug("Executing prepared statement with start time value = {} end time = {} and incrementing value = {}",
               JdbcUtils.formatEST(tsOffset),
               JdbcUtils.formatEST(endTime),
@@ -176,9 +176,9 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       log.debug("Executing prepared statement with incrementing value = {}", incOffset);
     } else if (timestampColumn != null) {
       Timestamp tsOffset = offset.getTimestampOffset();
-      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), EST_CALENDAR).getTime() - timestampDelay);
-      stmt.setTimestamp(1, tsOffset, EST_CALENDAR);
-      stmt.setTimestamp(2, endTime, EST_CALENDAR);
+      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), new GregorianCalendar(timeZone)).getTime() - timestampDelay);
+      stmt.setTimestamp(1, tsOffset, new GregorianCalendar(timeZone));
+      stmt.setTimestamp(2, endTime, new GregorianCalendar(timeZone));
       log.debug("Executing prepared statement with timestamp value = {} end time = {}",
               JdbcUtils.formatEST(tsOffset),
               JdbcUtils.formatEST(endTime));
