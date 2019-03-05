@@ -37,6 +37,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Utilties for interacting with a JDBC database.
@@ -171,6 +173,18 @@ public class JdbcUtils {
    */
   public static String formatEST(Date date) {
     return DATE_FORMATTER.get().format(date);
+  }
+
+  /**
+   * Format the given Date per the specified timezone in a format supported by SQL.
+   * @param date the date to convert to a String
+   * @param timezone timezone to apply
+   * @return the formatted string
+   */
+  public static String formatDateTimeOffset(java.sql.Timestamp date, TimeZone timezone) {
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS XXX");
+    ZonedDateTime zdt = ZonedDateTime.ofInstant(date.toInstant(), timezone.toZoneId());
+    return zdt.format(dtf);
   }
 
   /**

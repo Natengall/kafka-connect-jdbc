@@ -192,11 +192,16 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   private static final String TIMESTAMP_DELAY_INTERVAL_MS_DISPLAY = "Delay Interval (ms)";
 
   public static final String DB_TIMEZONE_CONFIG = "db.timezone";
-  public static final String DB_TIMEZONE_DEFAULT = "EST";
+  public static final String DB_TIMEZONE_DEFAULT = "America/New_York";
   private static final String DB_TIMEZONE_DOC =
       "Name of the JDBC timezone that should be used in the connector when "
-      + "querying with time-based criteria. Defaults to EST.";
+      + "querying with time-based criteria. Defaults to America/New_York.";
   private static final String DB_TIMEZONE_CONFIG_DISPLAY = "DB time zone";
+
+  public static final String ENABLE_DATETIMEOFFSET = "datetimeoffset.enable";
+  public static final String ENABLE_DATETIMEOFFSET_CONFIG = "datetimeoffset.enable";
+  public static final String ENABLE_DATETIMEOFFSET_DOC = "Set this to true if the selected timestamp column is of datetimeoffset type";
+  private static final String ENABLE_DATETIMEOFFSET_DISPLAY = "Enables the Date time Offset value to be selected for comparison purposes";
 
   public static final String INITIAL_OFFSET_CONFIG = "initial.offset";
   private static final String INITIAL_OFFSET_DOC =
@@ -268,6 +273,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(TOPIC_PREFIX_CONFIG, Type.STRING, Importance.HIGH, TOPIC_PREFIX_DOC, CONNECTOR_GROUP, 4, Width.MEDIUM, TOPIC_PREFIX_DISPLAY)
         .define(TIMESTAMP_DELAY_INTERVAL_MS_CONFIG, Type.LONG, TIMESTAMP_DELAY_INTERVAL_MS_DEFAULT, Importance.HIGH, TIMESTAMP_DELAY_INTERVAL_MS_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, TIMESTAMP_DELAY_INTERVAL_MS_DISPLAY)
         .define(DB_TIMEZONE_CONFIG, Type.STRING, DB_TIMEZONE_DEFAULT, Importance.MEDIUM, DB_TIMEZONE_DOC, CONNECTOR_GROUP, 6, Width.MEDIUM, DB_TIMEZONE_CONFIG_DISPLAY)
+        .define(ENABLE_DATETIMEOFFSET_CONFIG, Type.BOOLEAN, false, Importance.LOW, ENABLE_DATETIMEOFFSET_DOC, MODE_GROUP, 5, Width.SHORT, ENABLE_DATETIMEOFFSET_DISPLAY)
         .define(INITIAL_OFFSET_CONFIG, Type.LONG, null, Importance.MEDIUM, INITIAL_OFFSET_DOC, CONNECTOR_GROUP, 7, Width.MEDIUM, INITIAL_OFFSET_DISPLAY)
         .define(CHANGE_OPERATIONS_CONFIG, Type.STRING, null, Importance.MEDIUM, CHANGE_OPERATIONS_DOC, CONNECTOR_GROUP, 8, Width.MEDIUM, CHANGE_OPERATIONS_DISPLAY)
         .define(TAG_CONFIG, Type.STRING, null, Importance.LOW, TAG_DOC, MODE_GROUP, 5, Width.SHORT, TAG_DISPLAY);

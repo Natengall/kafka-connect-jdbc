@@ -65,6 +65,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
   private TimestampIncrementingOffset offset;
   private Boolean timestampGte = false;
   private final TimeZone timeZone;
+  private boolean enableDatetimeoffset = false;
 
   public TimestampIncrementingTableQuerier(QueryMode mode, String name, String topicPrefix,
                                            String timestampColumn, String incrementingColumn,
@@ -79,6 +80,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       this.timestampGte = config.getBoolean("timestamp.gte");
     } catch (ConfigException e) { }
     this.timeZone = config.timeZone();
+    this.enableDatetimeoffset = config.getBoolean(JdbcSourceConnectorConfig.ENABLE_DATETIMEOFFSET_CONFIG);
   }
 
   @Override
@@ -161,15 +163,32 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
     if (incrementingColumn != null && timestampColumn != null) {
       Timestamp tsOffset = offset.getTimestampOffset();
       Long incOffset = offset.getIncrementingOffset();
+
       Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), new GregorianCalendar(timeZone)).getTime() - timestampDelay);
-      stmt.setTimestamp(1, endTime, new GregorianCalendar(timeZone));
-      stmt.setTimestamp(2, tsOffset, new GregorianCalendar(timeZone));
+
       stmt.setLong(3, incOffset);
-      stmt.setTimestamp(4, tsOffset, new GregorianCalendar(timeZone));
-      log.debug("Executing prepared statement with start time value = {} end time = {} and incrementing value = {}",
+
+      if (enableDatetimeoffset) {
+        stmt.setString(1, JdbcUtils.formatDateTimeOffset(endTime, timeZone));
+        stmt.setString(2, JdbcUtils.formatDateTimeOffset(tsOffset, timeZone));
+        stmt.setString(4, JdbcUtils.formatDateTimeOffset(tsOffset, timeZone));
+
+        log.info("ts+incr : {} end time = {} and incrementing value = {}",
+                JdbcUtils.formatDateTimeOffset(endTime, timeZone),
+                JdbcUtils.formatDateTimeOffset(tsOffset, timeZone),
+                incOffset);
+
+      } else {
+        stmt.setTimestamp(1, endTime, new GregorianCalendar(timeZone));
+        stmt.setTimestamp(2, tsOffset, new GregorianCalendar(timeZone));
+        stmt.setTimestamp(4, tsOffset, new GregorianCalendar(timeZone));
+      }
+
+      log.info("Executing prepared statement with start time value = {} end time = {} and incrementing value = {}",
               JdbcUtils.formatEST(tsOffset),
               JdbcUtils.formatEST(endTime),
               incOffset);
+
     } else if (incrementingColumn != null) {
       Long incOffset = offset.getIncrementingOffset();
       stmt.setLong(1, incOffset);
@@ -190,6 +209,12 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
   public SourceRecord extractRecord() throws SQLException {
     final Struct record = DataConverter.convertRecord(schema, resultSet);
     offset = extractOffset(schema, record);
+    try {
+      log.info("extract offset: " + offset.getIncrementingOffset() + ";" + this);
+    } catch (Exception e) { }
+    try {
+      log.info("extract offset: " + offset.getTimestampOffset() + ";" + this);
+    } catch (Exception e) { }
     // TODO: Key?
     final String topic;
     final Map<String, String> partition;
