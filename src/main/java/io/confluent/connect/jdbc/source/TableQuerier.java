@@ -71,6 +71,7 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
     this.partitionColumn = config.getString(JdbcSourceConnectorConfig.PARTITION_COLUMN_NAME_CONFIG);
     this.keyColumn = config.getString(JdbcSourceConnectorConfig.KEY_COLUMN_NAME_CONFIG);
     this.keyFormat = config.getString(JdbcSourceConnectorConfig.KEY_FORMAT_CONFIG);
+    this.tag = config.getString(JdbcSourceConnectorConfig.TAG_CONFIG);
   }
 
   public long getLastUpdate() {
@@ -98,7 +99,7 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
 
       if (resultSet.last()) {
         int rowCount = resultSet.getRow();
-        log.info((tag == null ? "" : "[" + tag + "]") + topicPrefix + (name == null ? "" : name) + " fetched " + rowCount + " rows.");
+        log(topicPrefix + (name == null ? "" : name) + " fetched " + rowCount + " rows.");
         resultSet.beforeFirst(); // not rs.first() because the rs.next() below will move on, missing the first element
       }
       schema = DataConverter.convertSchema(name, resultSet.getMetaData());
@@ -170,6 +171,12 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
         return TRANSACTION_LEVEL_TEMPLATE + "SERIALIZABLE; ";
       default:
         return "";
+    }
+  }
+
+  protected void log(String msg, Object... arg) {
+    if (tag != null) {
+      log.info("[" + tag + "]" + msg, arg);
     }
   }
 }

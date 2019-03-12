@@ -88,7 +88,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
       builder.append(" ASC");
     }
     String connectorSql = builder.toString();
-    log.debug("{} prepared SQL query: {}", this, connectorSql);
+    log("Prepared SQL query: {}", connectorSql);
     stmt = db.prepareStatement(connectorSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
   }
 
@@ -107,7 +107,7 @@ public class ChangetrackingTableQuerier extends TableQuerier {
     if (incrementingColumn != null) {
       Long incOffset = offset.getIncrementingOffset();
       stmt.setLong(1, incOffset);
-      log.info("{}: Executing prepared statement with incrementing value = {}", this, incOffset);
+      log("Executing prepared statement with incrementing value = {}", incOffset);
     }
     return stmt.executeQuery();
   }

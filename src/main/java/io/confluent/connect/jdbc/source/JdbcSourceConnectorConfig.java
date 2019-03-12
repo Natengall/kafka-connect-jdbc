@@ -276,7 +276,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(ENABLE_DATETIMEOFFSET_CONFIG, Type.BOOLEAN, false, Importance.LOW, ENABLE_DATETIMEOFFSET_DOC, MODE_GROUP, 5, Width.SHORT, ENABLE_DATETIMEOFFSET_DISPLAY)
         .define(INITIAL_OFFSET_CONFIG, Type.LONG, null, Importance.MEDIUM, INITIAL_OFFSET_DOC, CONNECTOR_GROUP, 7, Width.MEDIUM, INITIAL_OFFSET_DISPLAY)
         .define(CHANGE_OPERATIONS_CONFIG, Type.STRING, null, Importance.MEDIUM, CHANGE_OPERATIONS_DOC, CONNECTOR_GROUP, 8, Width.MEDIUM, CHANGE_OPERATIONS_DISPLAY)
-        .define(TAG_CONFIG, Type.STRING, null, Importance.LOW, TAG_DOC, MODE_GROUP, 5, Width.SHORT, TAG_DISPLAY);
+        .define(TAG_CONFIG, Type.STRING, null, Importance.MEDIUM, TAG_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, TAG_DISPLAY);
   }
 
   public static final ConfigDef CONFIG_DEF = baseConfigDef();

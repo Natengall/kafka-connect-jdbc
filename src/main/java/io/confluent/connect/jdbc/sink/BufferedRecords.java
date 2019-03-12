@@ -101,7 +101,9 @@ public class BufferedRecords {
       return new ArrayList<>();
     }
     for (SinkRecord record : records) {
-      preparedStatementBinder.bindRecord(record);
+      try {
+        preparedStatementBinder.bindRecord(record);
+      } catch (Exception e) { }
     }
 
     int[] updateCounts;
@@ -112,6 +114,8 @@ public class BufferedRecords {
     } catch (BatchUpdateException bue) {
       updateCounts = bue.getUpdateCounts();
       log.error(connectorName + " reported a DB error: " + bue.getMessage() + ";\n" + preparedStatement);
+    } catch (NullPointerException npe) {
+      updateCounts = new int[]{0};
     }
 
     List<SinkRecord> failedRecords = new ArrayList<>();
