@@ -53,7 +53,7 @@ public class DataConverter {
   private static final ThreadLocal<Calendar> EST_CALENDAR = new ThreadLocal<Calendar>() {
     @Override
     protected Calendar initialValue() {
-      return new GregorianCalendar(TimeZone.getTimeZone("EST"));
+      return new GregorianCalendar(TimeZone.getTimeZone("America/New_York"));
     }
   };
 

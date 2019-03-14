@@ -147,9 +147,8 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       builder.append(" WHERE ");
       builder.append(JdbcUtils.quoteString(timestampColumn, quoteString));
       builder.append(timestampGte ? " >= " : " > ");
-      builder.append(" ? AND ");
-      builder.append(JdbcUtils.quoteString(timestampColumn, quoteString));
-      builder.append(" < ? ORDER BY ");
+      builder.append(" ? ");
+      builder.append(" ORDER BY ");
       builder.append(JdbcUtils.quoteString(timestampColumn, quoteString));
       builder.append(" ASC");
     }
@@ -187,25 +186,28 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       log("Executing prepared statement with incrementing value = {}", incOffset);
     } else if (timestampColumn != null) {
       Timestamp tsOffset = offset.getTimestampOffset();
-      Timestamp endTime = new Timestamp(JdbcUtils.getCurrentTimeOnDB(stmt.getConnection(), new GregorianCalendar(timeZone)).getTime() - timestampDelay);
-      stmt.setTimestamp(1, tsOffset, new GregorianCalendar(timeZone));
-      stmt.setTimestamp(2, endTime, new GregorianCalendar(timeZone));
-      log("Executing prepared statement with timestamp value = {} end time = {}",
-          JdbcUtils.formatDateTimeOffset(tsOffset, timeZone),
-          JdbcUtils.formatDateTimeOffset(endTime, timeZone));
+      stmt.setTimestamp(1, tsOffset);
+      log("Executing prepared statement with timestamp value = {})",
+          tsOffset);
     }
     return stmt.executeQuery();
   }
 
   @Override
   public SourceRecord extractRecord() throws SQLException {
+    try {
+      log("Extract record - ID: " + resultSet.getString("ID") + "; LatestUpdate: " + resultSet.getString("LatestUpdate"));
+    } catch (Exception e) {
+      log("failed to extract record");
+    }
     final Struct record = DataConverter.convertRecord(schema, resultSet);
+    log("Extract record - Struct: " + record);
     offset = extractOffset(schema, record);
     try {
-      log("Extract offset: " + offset.getIncrementingOffset() + ";" + this);
+      log("Extract offset (incr): " + offset.getIncrementingOffset());
     } catch (Exception e) { }
     try {
-      log("Extract offset: " + offset.getTimestampOffset() + ";" + this);
+      log("Extract offset (ts): " + offset.getTimestampOffset());
     } catch (Exception e) { }
     // TODO: Key?
     final String topic;
