@@ -21,7 +21,7 @@
     <groupId>io.confluent</groupId>
     <artifactId>kafka-connect-jdbc</artifactId>
     <packaging>jar</packaging>
-    <version>3.1.0.22-SNAPSHOT</version>
+    <version>3.1.0.22</version>
     <name>kafka-connect-jdbc</name>
     <organization>
         <name>Confluent, Inc.</name>
@@ -44,7 +44,7 @@
         <connection>scm:git:git@git.csnzoo.com:fork/kafka-connect-jdbc.git</connection>
         <developerConnection>scm:git:git@git.csnzoo.com:fork/kafka-connect-jdbc.git</developerConnection>
         <url>https://git.csnzoo.com/fork/kafka-connect-jdbc</url>
-      <tag>HEAD</tag>
+      <tag>kafka-connect-jdbc-3.1.0.22</tag>
   </scm>
 
     <distributionManagement>
