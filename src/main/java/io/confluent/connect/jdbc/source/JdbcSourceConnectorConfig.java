@@ -213,6 +213,13 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
       "Acceptable DML operations to produce to Kafka for changetracking mode.";
   private static final String CHANGE_OPERATIONS_DISPLAY = "Change Operations";
 
+  public static final String APPEND_WHERE_CLAUSE_CONFIG = "append.where.clause";
+  private static final String APPEND_WHERE_CLAUSE_DOC =
+      "By default, JDBC connectors on incrementing and timestamp modes will automatically append a WHERE clause to "
+      + "extract new data from the source table. Setting this to false will disable the WHERE clause from appearing.";
+  public static final boolean APPEND_WHERE_CLAUSE_DEFAULT = true;
+  private static final String APPEND_WHERE_CLAUSE_DISPLAY = "Append Where Clause";
+  
   public static final String TAG_CONFIG = "tag";
   public static final String TAG_DOC = "Tag";
   private static final String TAG_DISPLAY = "Tag";
@@ -276,7 +283,8 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(ENABLE_DATETIMEOFFSET_CONFIG, Type.BOOLEAN, false, Importance.LOW, ENABLE_DATETIMEOFFSET_DOC, MODE_GROUP, 5, Width.SHORT, ENABLE_DATETIMEOFFSET_DISPLAY)
         .define(INITIAL_OFFSET_CONFIG, Type.LONG, null, Importance.MEDIUM, INITIAL_OFFSET_DOC, CONNECTOR_GROUP, 7, Width.MEDIUM, INITIAL_OFFSET_DISPLAY)
         .define(CHANGE_OPERATIONS_CONFIG, Type.STRING, null, Importance.MEDIUM, CHANGE_OPERATIONS_DOC, CONNECTOR_GROUP, 8, Width.MEDIUM, CHANGE_OPERATIONS_DISPLAY)
-        .define(TAG_CONFIG, Type.STRING, null, Importance.MEDIUM, TAG_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, TAG_DISPLAY);
+        .define(TAG_CONFIG, Type.STRING, null, Importance.MEDIUM, TAG_DOC, CONNECTOR_GROUP, 5, Width.MEDIUM, TAG_DISPLAY)
+        .define(APPEND_WHERE_CLAUSE_CONFIG, Type.BOOLEAN, APPEND_WHERE_CLAUSE_DEFAULT, Importance.LOW, APPEND_WHERE_CLAUSE_DOC, MODE_GROUP, 6, Width.SHORT, APPEND_WHERE_CLAUSE_DISPLAY);
   }
 
   public static final ConfigDef CONFIG_DEF = baseConfigDef();

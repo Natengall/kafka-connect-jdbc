@@ -66,6 +66,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
   private Boolean timestampGte = false;
   private final TimeZone timeZone;
   private boolean enableDatetimeoffset = false;
+  private boolean appendWhereClause;
 
   public TimestampIncrementingTableQuerier(QueryMode mode, String name, String topicPrefix,
                                            String timestampColumn, String incrementingColumn,
@@ -81,6 +82,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
     } catch (ConfigException e) { }
     this.timeZone = config.timeZone();
     this.enableDatetimeoffset = config.getBoolean(JdbcSourceConnectorConfig.ENABLE_DATETIMEOFFSET_CONFIG);
+    this.appendWhereClause = config.getBoolean(JdbcSourceConnectorConfig.APPEND_WHERE_CLAUSE_CONFIG);
   }
 
   @Override
@@ -107,7 +109,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
         throw new ConnectException("Unknown mode encountered when preparing query: " + mode.toString());
     }
 
-    if (incrementingColumn != null && timestampColumn != null) {
+    if (appendWhereClause && incrementingColumn != null && timestampColumn != null) {
       // This version combines two possible conditions. The first checks timestamp == last
       // timestamp and incrementing > last incrementing. The timestamp alone would include
       // duplicates, but adding the incrementing condition ensures no duplicates, e.g. you would
@@ -136,14 +138,14 @@ public class TimestampIncrementingTableQuerier extends TableQuerier {
       builder.append(",");
       builder.append(JdbcUtils.quoteString(incrementingColumn, quoteString));
       builder.append(" ASC");
-    } else if (incrementingColumn != null) {
+    } else if (appendWhereClause && incrementingColumn != null) {
       builder.append(" WHERE ");
       builder.append(JdbcUtils.quoteString(incrementingColumn, quoteString));
       builder.append(" > ?");
       builder.append(" ORDER BY ");
       builder.append(JdbcUtils.quoteString(incrementingColumn, quoteString));
       builder.append(" ASC");
-    } else if (timestampColumn != null) {
+    } else if (appendWhereClause && timestampColumn != null) {
       builder.append(" WHERE ");
       builder.append(JdbcUtils.quoteString(timestampColumn, quoteString));
       builder.append(timestampGte ? " >= " : " > ");
