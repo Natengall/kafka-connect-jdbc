@@ -21,17 +21,21 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Time;
 import org.apache.kafka.connect.data.Timestamp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import io.confluent.connect.jdbc.sink.BufferedRecords;
 import io.confluent.connect.jdbc.sink.metadata.SinkRecordField;
 
 import static io.confluent.connect.jdbc.sink.dialect.StringBuilderUtil.joinToBuilder;
 
 public class SqlServerDialect extends DbDialect {
+  private static final Logger log = LoggerFactory.getLogger(SqlServerDialect.class);
 
   public SqlServerDialect() {
     super("[", "]");
@@ -127,6 +131,7 @@ public class SqlServerDialect extends DbDialect {
         builder.append(escaped(col)).append("= ? ");
       }
     });
+    log.info("Delete:" + builder.toString());
     return builder.toString();
   }
 }
