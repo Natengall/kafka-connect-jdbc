@@ -64,6 +64,15 @@ public class TimestampIncrementingCriteria {
      * @throws SQLException if there is a problem accessing the value
      */
     Long lastIncrementedValue() throws SQLException;
+
+    /**
+     * Get the flag indicating if the timestamp flag is datetimeoffset type or requires nano seconds precision.
+     *
+     * @return the flag indicating if the selected timestamp should use nano seconds precision
+     * @throws SQLException if there is a problem accessing the value
+     */
+    boolean isTimestampNanoPrecision() throws SQLException;
+
   }
 
   protected static final BigDecimal LONG_MAX_VALUE_AS_BIGDEC = new BigDecimal(Long.MAX_VALUE);
@@ -136,15 +145,28 @@ public class TimestampIncrementingCriteria {
     Timestamp beginTime = values.beginTimetampValue();
     Timestamp endTime = values.endTimetampValue();
     Long incOffset = values.lastIncrementedValue();
-    stmt.setTimestamp(1, endTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
-    stmt.setTimestamp(2, beginTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
     stmt.setLong(3, incOffset);
-    stmt.setTimestamp(4, beginTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
-    log.debug(
-        "Executing prepared statement with start time value = {} end time = {} and incrementing"
-        + " value = {}", DateTimeUtils.formatTimestamp(beginTime, timeZone),
-        DateTimeUtils.formatTimestamp(endTime, timeZone), incOffset
-    );
+    log.debug("Is DateTimeOffset Support Enabled? " + values.isTimestampNanoPrecision());
+    if (values.isTimestampNanoPrecision()) {
+        stmt.setString(1, DateTimeUtils.formatDateTimeOffset(endTime, timeZone));
+        stmt.setString(2, DateTimeUtils.formatDateTimeOffset(beginTime, timeZone));
+        stmt.setString(4, DateTimeUtils.formatDateTimeOffset(beginTime, timeZone));
+        log.debug(
+            "Executing prepared statement supporting datetimeoffset with start time value = {} end time = {} and incrementing"
+            + " value = {}", DateTimeUtils.formatDateTimeOffset(beginTime, timeZone),
+            DateTimeUtils.formatDateTimeOffset(endTime, timeZone), incOffset
+        );
+    } else {
+        stmt.setTimestamp(1, endTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
+        stmt.setTimestamp(2, beginTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
+        stmt.setTimestamp(4, beginTime, DateTimeUtils.getTimeZoneCalendar(timeZone));
+        log.debug(
+            "Executing prepared statement with start time value = {} end time = {} and incrementing"
+            + " value = {}", DateTimeUtils.formatTimestamp(beginTime, timeZone),
+            DateTimeUtils.formatTimestamp(endTime, timeZone), incOffset
+        );
+    }
+
   }
 
   protected void setQueryParametersIncrementing(

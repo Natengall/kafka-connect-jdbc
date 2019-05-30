@@ -46,6 +46,9 @@ import io.confluent.connect.jdbc.util.ColumnDefinition;
 import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.TableId;
 import io.confluent.connect.jdbc.util.Version;
+import io.confluent.connect.jdbc.util.InfluxDBClientProvider;
+import metrics_influxdb.measurements.Measure;
+import metrics_influxdb.measurements.UdpInlinerSender;
 
 /**
  * JdbcSourceTask is a Kafka Connect SourceTask implementation that reads from JDBC databases and
@@ -61,13 +64,16 @@ public class JdbcSourceTask extends SourceTask {
   private CachedConnectionProvider cachedConnectionProvider;
   private PriorityQueue<TableQuerier> tableQueue = new PriorityQueue<TableQuerier>();
   private final AtomicBoolean running = new AtomicBoolean(false);
+  private UdpInlinerSender influxdb;
 
   public JdbcSourceTask() {
     this.time = new SystemTime();
+    influxdb = InfluxDBClientProvider.getInstance();
   }
 
   public JdbcSourceTask(Time time) {
     this.time = time;
+    influxdb = InfluxDBClientProvider.getInstance();
   }
 
   @Override
@@ -113,7 +119,8 @@ public class JdbcSourceTask extends SourceTask {
     //used only in table mode
     Map<String, List<Map<String, String>>> partitionsByTableFqn = new HashMap<>();
     Map<Map<String, String>, Map<String, Object>> offsets = null;
-    if (mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING)
+    if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING)
+        || mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING)
         || mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP)
         || mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP_INCREMENTING)) {
       List<Map<String, String>> partitions = new ArrayList<>(tables.size());
@@ -140,12 +147,16 @@ public class JdbcSourceTask extends SourceTask {
       log.trace("The partition offsets are {}", offsets);
     }
 
+    String schemaPattern
+        = config.getString(JdbcSourceTaskConfig.SCHEMA_PATTERN_CONFIG);
     String incrementingColumn
         = config.getString(JdbcSourceTaskConfig.INCREMENTING_COLUMN_NAME_CONFIG);
     List<String> timestampColumns
         = config.getList(JdbcSourceTaskConfig.TIMESTAMP_COLUMN_NAME_CONFIG);
     Long timestampDelayInterval
         = config.getLong(JdbcSourceTaskConfig.TIMESTAMP_DELAY_INTERVAL_MS_CONFIG);
+    Object initialOffset
+        = config.getLong(JdbcSourceTaskConfig.INITIAL_OFFSET_CONFIG);
     boolean validateNonNulls
         = config.getBoolean(JdbcSourceTaskConfig.VALIDATE_NON_NULL_CONFIG);
     TimeZone timeZone = config.timeZone();
@@ -192,7 +203,17 @@ public class JdbcSourceTask extends SourceTask {
 
       String topicPrefix = config.getString(JdbcSourceTaskConfig.TOPIC_PREFIX_CONFIG);
 
-      if (mode.equals(JdbcSourceTaskConfig.MODE_BULK)) {
+      if (mode.equals(JdbcSourceTaskConfig.MODE_CHANGETRACKING)) {
+          tableQueue.add(new ChangetrackingTableQuerier(
+              dialect,
+              queryMode,
+              tableOrQuery,
+              topicPrefix,
+              incrementingColumn,
+              offset,
+              timestampDelayInterval,
+              config));
+      } else if (mode.equals(JdbcSourceTaskConfig.MODE_BULK)) {
         tableQueue.add(
             new BulkTableQuerier(dialect, queryMode, tableOrQuery, topicPrefix)
         );
@@ -207,7 +228,8 @@ public class JdbcSourceTask extends SourceTask {
                 incrementingColumn,
                 offset,
                 timestampDelayInterval,
-                timeZone
+                timeZone,
+                config
             )
         );
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP)) {
@@ -221,7 +243,8 @@ public class JdbcSourceTask extends SourceTask {
                 null,
                 offset,
                 timestampDelayInterval,
-                timeZone
+                timeZone,
+                config
             )
         );
       } else if (mode.endsWith(JdbcSourceTaskConfig.MODE_TIMESTAMP_INCREMENTING)) {
@@ -235,7 +258,8 @@ public class JdbcSourceTask extends SourceTask {
                 incrementingColumn,
                 offset,
                 timestampDelayInterval,
-                timeZone
+                timeZone,
+                config
             )
         );
       }
@@ -286,7 +310,7 @@ public class JdbcSourceTask extends SourceTask {
   }
 
   @Override
-  public List<SourceRecord> poll() throws InterruptedException {
+  public List<SourceRecord> poll() throws InterruptedException, ConnectException {
     log.trace("{} Polling for new data");
 
     while (running.get()) {
@@ -307,7 +331,15 @@ public class JdbcSourceTask extends SourceTask {
       final List<SourceRecord> results = new ArrayList<>();
       try {
         log.debug("Checking for next block of results from {}", querier.toString());
+        long start = System.currentTimeMillis();
         querier.maybeStartQuery(cachedConnectionProvider.getConnection());
+        Measure measure = new Measure("sayl.JdbcSourceConnector")
+                .timestamp(System.currentTimeMillis())
+                .addTag("connector", config.originalsStrings().get("name"))
+                .addValue("queryLatency", System.currentTimeMillis() - start);
+
+        influxdb.send(measure);
+        influxdb.flush();
 
         int batchMaxRows = config.getInt(JdbcSourceTaskConfig.BATCH_MAX_ROWS_CONFIG);
         boolean hadNext = true;
@@ -330,10 +362,21 @@ public class JdbcSourceTask extends SourceTask {
         return results;
       } catch (SQLException sqle) {
         log.error("Failed to run query for table {}: {}", querier.toString(), sqle);
-        resetAndRequeueHead(querier);
+        if (sqle.getMessage().contains("Change tracking is not enabled on table")) {
+          try {
+            throw sqle;
+          } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            throw new ConnectException("Unrecoverable exception trying to send", e);
+          }
+        } else {
+          resetAndRequeueHead(querier);
+        }
         return null;
       } catch (Throwable t) {
         resetAndRequeueHead(querier);
+        log.error("Failed to poll new data for {}", querier.toString(), t);
         // This task has failed, so close any resources (may be reopened if needed) before throwing
         closeResources();
         throw t;

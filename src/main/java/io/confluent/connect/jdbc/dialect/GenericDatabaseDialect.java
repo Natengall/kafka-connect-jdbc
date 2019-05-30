@@ -15,6 +15,8 @@
 
 package io.confluent.connect.jdbc.dialect;
 
+import com.wayfair.crypto.Passwords;
+import org.apache.commons.lang3.StringUtils;
 import java.time.ZoneOffset;
 import java.util.TimeZone;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -198,8 +200,15 @@ public class GenericDatabaseDialect implements DatabaseDialect {
   @Override
   public Connection getConnection() throws SQLException {
     // These config names are the same for both source and sink configs ...
-    String username = config.getString(JdbcSourceConnectorConfig.CONNECTION_USER_CONFIG);
-    Password dbPassword = config.getPassword(JdbcSourceConnectorConfig.CONNECTION_PASSWORD_CONFIG);
+    String username = "";
+    Password dbPassword = null;
+    if (jdbcUrl.contains("user=") && jdbcUrl.contains("password=")) {
+      username = StringUtils.substringBetween(jdbcUrl, "url=", ";");
+      dbPassword = new Password(StringUtils.substringAfterLast(jdbcUrl, "password="));
+    } else {
+      username = config.getString(JdbcSourceConnectorConfig.CONNECTION_USER_CONFIG);
+      dbPassword = new Password(Passwords.getCredential(username));
+    }
     Properties properties = new Properties();
     if (username != null) {
       properties.setProperty("user", username);
@@ -306,7 +315,7 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       String query
   ) throws SQLException {
     log.trace("Creating a PreparedStatement '{}'", query);
-    PreparedStatement stmt = db.prepareStatement(query);
+    PreparedStatement stmt = db.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
     initializePreparedStatement(stmt);
     return stmt;
   }
@@ -736,7 +745,7 @@ public class GenericDatabaseDialect implements DatabaseDialect {
   ) throws SQLException {
     String queryStr = "SELECT * FROM {} LIMIT 1";
     String quotedName = expressionBuilder().append(tableId).toString();
-    try (PreparedStatement stmt = db.prepareStatement(queryStr)) {
+    try (PreparedStatement stmt = db.prepareStatement(queryStr, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
       stmt.setString(1, quotedName);
       try (ResultSet rs = stmt.executeQuery()) {
         ResultSetMetaData rsmd = rs.getMetaData();
@@ -1231,7 +1240,7 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       case Types.TIMESTAMP: {
         return rs -> rs.getTimestamp(col, DateTimeUtils.getTimeZoneCalendar(timeZone));
       }
-
+      
       // Datalink is basically a URL -> string
       case Types.DATALINK: {
         return rs -> {
@@ -1396,6 +1405,14 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       TableId table,
       Collection<ColumnId> keyColumns,
       Collection<ColumnId> nonKeyColumns
+  ) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String buildDeleteStatement(
+      TableId table, 
+      Collection<ColumnId> keyColumns
   ) {
     throw new UnsupportedOperationException();
   }

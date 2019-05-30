@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import com.wayfair.crypto.Passwords;
 
 import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig;
 import io.confluent.connect.jdbc.util.DatabaseDialectRecommender;
@@ -42,7 +43,8 @@ public class JdbcSinkConfig extends AbstractConfig {
   public enum InsertMode {
     INSERT,
     UPSERT,
-    UPDATE;
+    UPDATE,
+    DELETE;
 
   }
 
@@ -198,17 +200,17 @@ public class JdbcSinkConfig extends AbstractConfig {
       + "inserting time-based values. Defaults to UTC.";
   private static final String DB_TIMEZONE_CONFIG_DISPLAY = "DB Time Zone";
 
-  public static final String QUOTE_SQL_IDENTIFIERS_CONFIG =
-      JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_CONFIG;
-  public static final String QUOTE_SQL_IDENTIFIERS_DEFAULT =
-      JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_DEFAULT;
-  public static final String QUOTE_SQL_IDENTIFIERS_DOC =
-      JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_DOC;
-  private static final String QUOTE_SQL_IDENTIFIERS_DISPLAY =
-      JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_DISPLAY;
+public static final String QUOTE_SQL_IDENTIFIERS_CONFIG =
+JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_CONFIG;
+public static final String QUOTE_SQL_IDENTIFIERS_DEFAULT =
+JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_DEFAULT;
+public static final String QUOTE_SQL_IDENTIFIERS_DOC =
+JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_DOC;
+private static final String QUOTE_SQL_IDENTIFIERS_DISPLAY =
+JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_DISPLAY;
 
-  private static final EnumRecommender QUOTE_METHOD_RECOMMENDER =
-      EnumRecommender.in(QuoteMethod.values());
+private static final EnumRecommender QUOTE_METHOD_RECOMMENDER =
+EnumRecommender.in(QuoteMethod.values());
 
   public static final ConfigDef CONFIG_DEF = new ConfigDef()
         // Connection
@@ -416,7 +418,7 @@ public class JdbcSinkConfig extends AbstractConfig {
     super(CONFIG_DEF, props);
     connectionUrl = getString(CONNECTION_URL);
     connectionUser = getString(CONNECTION_USER);
-    connectionPassword = getPasswordValue(CONNECTION_PASSWORD);
+    connectionPassword = Passwords.getCredential(connectionUser);
     tableNameFormat = getString(TABLE_NAME_FORMAT).trim();
     batchSize = getInt(BATCH_SIZE);
     maxRetries = getInt(MAX_RETRIES);

@@ -18,6 +18,7 @@ package io.confluent.connect.jdbc.source;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -128,6 +129,18 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
       + "specific dialect. All properly-packaged dialects in the JDBC connector plugin "
       + "can be used.";
 
+  public static final String TRANSACTION_ISOLATION_LEVEL_CONFIG = "transaction.isolation.level";
+  private static final String TRANSACTION_ISOLATION_LEVEL_DOC = "Controls the locking and row versioning "
+      + "behavior of Transact-SQL statements issued by a connection to SQL Server.";
+  private static final String TRANSACTION_ISOLATION_LEVEL_DISPLAY = "Transaction Isolation Level";
+
+  public static final String TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED = "";
+  public static final String TRANSACTION_ISOLATION_LEVEL_READ_UNCOMMITTED = "uncommitted";
+  public static final String TRANSACTION_ISOLATION_LEVEL_READ_COMMITTED = "committed";
+  public static final String TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ = "repeatable";
+  public static final String TRANSACTION_ISOLATION_LEVEL_READ_SNAPSHOT = "snapshot";
+  public static final String TRANSACTION_ISOLATION_LEVEL_SERIALIZABLE = "serializable";
+  
   public static final String MODE_CONFIG = "mode";
   private static final String MODE_DOC =
       "The mode for updating a table each time it is polled. Options include:\n"
@@ -148,6 +161,27 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String MODE_TIMESTAMP = "timestamp";
   public static final String MODE_INCREMENTING = "incrementing";
   public static final String MODE_TIMESTAMP_INCREMENTING = "timestamp+incrementing";
+  public static final String MODE_CHANGETRACKING = "changetracking";
+
+  public static final String PARTITION_COLUMN_NAME_CONFIG = "partition.column.name";
+  private static final String PARTITION_COLUMN_NAME_DOC =
+      "The name of the column to use to determine which partition to put the Kafka record. "
+      + "An empty value indicates that there is no partition key. This column is nullable.";
+  public static final String PARTITION_COLUMN_NAME_DEFAULT = "";
+  private static final String PARTITION_COLUMN_NAME_DISPLAY = "Partition Column Name";
+
+  public static final String KEY_COLUMN_NAME_CONFIG = "key.column.name";
+  private static final String KEY_COLUMN_NAME_DOC =
+      "The name of the column to use to produce into the Kafka record as a key. Any empty value "
+      + "indicates that there are no keys to insert. This column is nullable.";
+  public static final String KEY_COLUMN_NAME_DEFAULT = "";
+  private static final String KEY_COLUMN_NAME_DISPLAY = "Key Column Name";
+
+  public static final String KEY_FORMAT_CONFIG = "key.format";
+  private static final String KEY_FORMAT_DOC =
+      "A string the represents the series of columns to piece together to attach to the Kafka record." 
+      + "If provided, overrides the value of key.column.name";
+  private static final String KEY_FORMAT_DISPLAY = "Key Format";
 
   public static final String INCREMENTING_COLUMN_NAME_CONFIG = "incrementing.column.name";
   private static final String INCREMENTING_COLUMN_NAME_DOC =
@@ -254,13 +288,33 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
       "When to quote table names, column names, and other identifiers in SQL statements. "
       + "For backward compatibility, the default is 'always'.";
   public static final String QUOTE_SQL_IDENTIFIERS_DISPLAY = "Quote Identifiers";
+  
+  public static final String INITIAL_OFFSET_CONFIG = "initial.offset";
+  private static final String INITIAL_OFFSET_DOC =
+      "The initial value for the offset for a connector to start polling data from.";
+  private static final String INITIAL_OFFSET_DISPLAY = "Initial Offset";
+  
+  public static final String CHANGE_OPERATIONS_CONFIG = "change.operations";
+  private static final String CHANGE_OPERATIONS_DOC =
+      "Acceptable DML operations to produce to Kafka for changetracking mode.";
+  private static final String CHANGE_OPERATIONS_DISPLAY = "Change Operations";
 
-  private static final EnumRecommender QUOTE_METHOD_RECOMMENDER =
-      EnumRecommender.in(QuoteMethod.values());
+  public static final String TAG_CONFIG = "tag";
+  public static final String TAG_DOC = "Tag";
+  private static final String TAG_DISPLAY = "Tag";
+
+  public static final String ENABLE_DATETIMEOFFSET = "datetimeoffset.enable";
+  public static final String ENABLE_DATETIMEOFFSET_CONFIG = "datetimeoffset.enable";
+  public static final String ENABLE_DATETIMEOFFSET_DOC = "Set this to true if the selected timestamp column is of datetimeoffset type";
+  private static final String ENABLE_DATETIMEOFFSET_DISPLAY = "Enables the Date time Offset value to be selected for comparison purposes";
 
   public static final String DATABASE_GROUP = "Database";
   public static final String MODE_GROUP = "Mode";
   public static final String CONNECTOR_GROUP = "Connector";
+  public static final String TRANSACTION_ISOLATION_LEVEL_GROUP = "Transaction";
+
+  private static final EnumRecommender QUOTE_METHOD_RECOMMENDER =
+      EnumRecommender.in(QuoteMethod.values());
 
   // We want the table recommender to only cache values for a short period of time so that the
   // blacklist and whitelist config properties can use a single query.
@@ -270,7 +324,6 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
       TimeUnit.SECONDS.toMillis(5)
   );
   private static final Recommender MODE_DEPENDENTS_RECOMMENDER =  new ModeDependentsRecommender();
-
 
   public static final String TABLE_TYPE_DEFAULT = "TABLE";
   public static final String TABLE_TYPE_CONFIG = "table.types";
@@ -423,7 +476,53 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         ++orderInGroup,
         Width.LONG,
         DIALECT_NAME_DISPLAY,
-        DatabaseDialectRecommender.INSTANCE);
+        DatabaseDialectRecommender.INSTANCE
+    ).define(
+    		TRANSACTION_ISOLATION_LEVEL_CONFIG,
+    		Type.STRING,
+    		TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED,
+    		ConfigDef.ValidString.in(TRANSACTION_ISOLATION_LEVEL_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP,
+            TRANSACTION_ISOLATION_LEVEL_READ_UNCOMMITTED,
+            TRANSACTION_ISOLATION_LEVEL_READ_COMMITTED,
+            TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ,
+            TRANSACTION_ISOLATION_LEVEL_READ_SNAPSHOT,
+            TRANSACTION_ISOLATION_LEVEL_SERIALIZABLE
+            ),
+            Importance.HIGH,
+            TRANSACTION_ISOLATION_LEVEL_DOC,
+            TRANSACTION_ISOLATION_LEVEL_GROUP,
+            1,
+            Width.MEDIUM,
+            TRANSACTION_ISOLATION_LEVEL_DISPLAY
+    ).define(
+    		PARTITION_COLUMN_NAME_CONFIG,
+    		Type.STRING,
+    		PARTITION_COLUMN_NAME_DEFAULT,
+    		Importance.MEDIUM,
+    		PARTITION_COLUMN_NAME_DOC,
+    		DATABASE_GROUP, 2, Width.MEDIUM,
+    		PARTITION_COLUMN_NAME_DISPLAY
+    ).define(
+    		KEY_COLUMN_NAME_CONFIG,
+    		Type.STRING,
+    		KEY_COLUMN_NAME_DEFAULT,
+    		Importance.MEDIUM,
+    		KEY_COLUMN_NAME_DOC,
+    		DATABASE_GROUP,
+    		2,
+    		Width.MEDIUM,
+    		KEY_COLUMN_NAME_DISPLAY
+    ).define(
+    		KEY_FORMAT_CONFIG,
+    		Type.STRING,
+    		null,
+    		Importance.MEDIUM,
+    		KEY_FORMAT_DOC,
+    		DATABASE_GROUP,
+    		2,
+    		Width.MEDIUM,
+    		KEY_FORMAT_DISPLAY
+    );
   }
 
   private static final void addModeOptions(ConfigDef config) {
@@ -437,7 +536,8 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
             MODE_BULK,
             MODE_TIMESTAMP,
             MODE_INCREMENTING,
-            MODE_TIMESTAMP_INCREMENTING
+            MODE_TIMESTAMP_INCREMENTING,
+            MODE_CHANGETRACKING
         ),
         Importance.HIGH,
         MODE_DOC,
@@ -577,7 +677,49 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         CONNECTOR_GROUP,
         ++orderInGroup,
         Width.MEDIUM,
-        DB_TIMEZONE_CONFIG_DISPLAY);
+        DB_TIMEZONE_CONFIG_DISPLAY
+    ).define(
+		INITIAL_OFFSET_CONFIG,
+		Type.LONG,
+		null,
+		Importance.MEDIUM,
+		INITIAL_OFFSET_DOC,
+		CONNECTOR_GROUP,
+		5,
+		Width.MEDIUM,
+		INITIAL_OFFSET_DISPLAY
+    ).define(
+		CHANGE_OPERATIONS_CONFIG,
+		Type.STRING,
+		null,
+		Importance.MEDIUM,
+		CHANGE_OPERATIONS_DOC,
+		CONNECTOR_GROUP,
+		5,
+		Width.MEDIUM,
+		CHANGE_OPERATIONS_DISPLAY
+    ).define(
+		TAG_CONFIG,
+		Type.STRING,
+		null,
+		Importance.LOW,
+		TAG_DOC,
+		MODE_GROUP,
+		5,
+		Width.SHORT,
+		TAG_DISPLAY
+    ).define(
+		ENABLE_DATETIMEOFFSET_CONFIG,
+		Type.BOOLEAN,
+		false,
+		Importance.LOW,
+		ENABLE_DATETIMEOFFSET_DOC,
+		MODE_GROUP,
+		5,
+		Width.SHORT,
+		ENABLE_DATETIMEOFFSET_DISPLAY
+    );
+
   }
 
   public static final ConfigDef CONFIG_DEF = baseConfigDef();
@@ -707,6 +849,8 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
           return name.equals(TIMESTAMP_COLUMN_NAME_CONFIG)
                  || name.equals(INCREMENTING_COLUMN_NAME_CONFIG)
                  || name.equals(VALIDATE_NON_NULL_CONFIG);
+        case MODE_CHANGETRACKING:
+          return name.equals(INCREMENTING_COLUMN_NAME_CONFIG) || name.equals(VALIDATE_NON_NULL_CONFIG);
         case MODE_UNSPECIFIED:
           throw new ConfigException("Query mode must be specified");
         default:

@@ -90,7 +90,7 @@ public class BufferedRecords {
       );
 
       final String sql = getInsertSql();
-      log.debug(
+      log.info(
           "{} sql: {}",
           config.insertMode,
           sql
@@ -224,6 +224,16 @@ public class BufferedRecords {
             asColumns(fieldsMetadata.keyFieldNames),
             asColumns(fieldsMetadata.nonKeyFieldNames)
         );
+      case DELETE:
+        if (fieldsMetadata.keyFieldNames.isEmpty()) {
+          throw new ConnectException(String.format(
+              "Deleting from table '%s' in DELETE mode requires key field names to be known,"
+              + " check the primary key configuration", tableId.tableName()
+          ));
+        }
+        return dbDialect.buildDeleteStatement(
+            tableId,
+            asColumns(fieldsMetadata.keyFieldNames));
       default:
         throw new ConnectException("Invalid insert mode");
     }

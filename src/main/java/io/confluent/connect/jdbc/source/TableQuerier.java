@@ -53,6 +53,9 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
   protected ResultSet resultSet;
   protected SchemaMapping schemaMapping;
   private String loggedQueryString;
+  protected String tag;
+  
+  private static final String TRANSACTION_LEVEL_TEMPLATE = "SET TRANSACTION ISOLATION LEVEL ";
 
   public TableQuerier(
       DatabaseDialect dialect,
@@ -91,6 +94,12 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
       stmt = getOrCreatePreparedStatement(db);
       resultSet = executeQuery();
       String schemaName = tableId != null ? tableId.tableName() : null; // backwards compatible
+      if (resultSet.last()) {
+          int rowCount = resultSet.getRow();
+          log.info((tag == null ? "" : "[" + tag + "]") + topicPrefix + (schemaName == null ? "" : schemaName) + " fetched " + rowCount + " rows.");
+          resultSet.beforeFirst(); // not rs.first() because the rs.next() below will move on, missing the first element
+      }
+
       schemaMapping = SchemaMapping.create(schemaName, resultSet.getMetaData(), dialect);
     }
   }
@@ -152,4 +161,25 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
       return this.tableId.compareTo(other.tableId);
     }
   }
+  
+  protected String getTransactionLevelString(String transactionLevel) {
+    if (transactionLevel == null) {
+      return "";
+    }
+    switch (transactionLevel) {
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_READ_UNCOMMITTED:
+        return TRANSACTION_LEVEL_TEMPLATE + "READ UNCOMMITTED; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_READ_COMMITTED:
+        return TRANSACTION_LEVEL_TEMPLATE + "READ COMMITTED; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ:
+        return TRANSACTION_LEVEL_TEMPLATE + "REPEATABLE READ; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_READ_SNAPSHOT:
+        return TRANSACTION_LEVEL_TEMPLATE + "SNAPSHOT; ";
+      case JdbcSourceTaskConfig.TRANSACTION_ISOLATION_LEVEL_SERIALIZABLE:
+        return TRANSACTION_LEVEL_TEMPLATE + "SERIALIZABLE; ";
+      default:
+        return "";
+    }
+ }
+
 }

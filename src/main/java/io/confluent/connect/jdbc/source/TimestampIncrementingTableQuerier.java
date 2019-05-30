@@ -71,19 +71,23 @@ public class TimestampIncrementingTableQuerier extends TableQuerier implements C
   private final Map<String, String> partition;
   private final String topic;
   private final TimeZone timeZone;
+  private boolean enableDatetimeoffset = false;
 
   public TimestampIncrementingTableQuerier(DatabaseDialect dialect, QueryMode mode, String name,
                                            String topicPrefix,
                                            List<String> timestampColumnNames,
                                            String incrementingColumnName,
                                            Map<String, Object> offsetMap, Long timestampDelay,
-                                           TimeZone timeZone) {
+                                           TimeZone timeZone,
+                                           JdbcSourceTaskConfig config) {
     super(dialect, mode, name, topicPrefix);
     this.incrementingColumnName = incrementingColumnName;
     this.timestampColumnNames = timestampColumnNames != null
                                 ? timestampColumnNames : Collections.<String>emptyList();
     this.timestampDelay = timestampDelay;
     this.offset = TimestampIncrementingOffset.fromMap(offsetMap);
+    this.enableDatetimeoffset = config.getBoolean(JdbcSourceConnectorConfig.ENABLE_DATETIMEOFFSET_CONFIG);
+    log.debug("Reading DateTimeOffset Support :: " + this.enableDatetimeoffset);
 
     this.timestampColumns = new ArrayList<>();
     for (String timestampColumn : this.timestampColumnNames) {
@@ -95,7 +99,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier implements C
     switch (mode) {
       case TABLE:
         String tableName = tableId.tableName();
-        topic = topicPrefix + tableName;// backward compatible
+        topic = topicPrefix + tableName; // backward compatible
         partition = OffsetProtocols.sourcePartitionForProtocolV1(tableId);
         break;
       case QUERY:
@@ -210,6 +214,11 @@ public class TimestampIncrementingTableQuerier extends TableQuerier implements C
   @Override
   public Long lastIncrementedValue() {
     return offset.getIncrementingOffset();
+  }
+
+  @Override
+  public boolean isTimestampNanoPrecision() {
+    return this.enableDatetimeoffset;
   }
 
   @Override

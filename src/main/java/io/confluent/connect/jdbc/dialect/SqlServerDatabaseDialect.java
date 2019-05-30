@@ -18,19 +18,29 @@ package io.confluent.connect.jdbc.dialect;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Time;
 import org.apache.kafka.connect.data.Timestamp;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.TimeZone;
 
+import io.confluent.connect.jdbc.dialect.DatabaseDialect.ColumnConverter;
 import io.confluent.connect.jdbc.dialect.DatabaseDialectProvider.SubprotocolBasedProvider;
+import io.confluent.connect.jdbc.sink.JdbcSinkConfig;
 import io.confluent.connect.jdbc.sink.metadata.SinkRecordField;
+import io.confluent.connect.jdbc.source.ColumnMapping;
+import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig;
 import io.confluent.connect.jdbc.util.ColumnDefinition;
 import io.confluent.connect.jdbc.util.ColumnId;
+import io.confluent.connect.jdbc.util.DateTimeUtils;
 import io.confluent.connect.jdbc.util.ExpressionBuilder;
 import io.confluent.connect.jdbc.util.IdentifierRules;
 import io.confluent.connect.jdbc.util.TableId;
@@ -187,6 +197,78 @@ public class SqlServerDatabaseDialect extends GenericDatabaseDialect {
     return builder.toString();
   }
 
+  @Override
+  public String buildDeleteStatement(
+      TableId table,
+      Collection<ColumnId> keyColumns
+  ) {
+    ExpressionBuilder builder = expressionBuilder();
+    builder.append("DELETE FROM ");
+    builder.append(table);
+    builder.append(" WHERE ");
+    builder.appendList()
+           .delimitedBy(" and ")
+           .transformedBy(this::transformAs)
+           .of(keyColumns);
+    builder.append(")");
+    return builder.toString();
+  }
+  
+  @Override
+  public String addFieldToSchema(
+      ColumnDefinition columnDefn,
+      SchemaBuilder builder
+  ) {
+    // Handle any SQL Server specific data types first, before adding the generic data types
+    final String fieldName = fieldNameFor(columnDefn);
+    switch (columnDefn.type()) {
+      // Timestamp is a date + time
+      case microsoft.sql.Types.DATETIMEOFFSET: {
+          boolean optional = columnDefn.isOptional();
+          SchemaBuilder tsSchemaBuilder = org.apache.kafka.connect.data.Timestamp.builder();
+          if (optional) {
+            tsSchemaBuilder.optional();
+          }
+          builder.field(fieldName, tsSchemaBuilder.build());
+          return fieldName;
+        }
+      default:
+    	  // Delegate for the remaining logic
+    	  return super.addFieldToSchema(columnDefn, builder);
+    }
+
+
+  }
+
+  @Override
+  public ColumnConverter createColumnConverter(
+      ColumnMapping mapping
+  ) {
+	// Handle any SQL Server specific data types first, before mapping the generic data types
+    ColumnDefinition columnDefn = mapping.columnDefn();
+    int col = mapping.columnNumber();
+    TimeZone timeZone;
+    if (config instanceof JdbcSourceConnectorConfig) {
+        timeZone = ((JdbcSourceConnectorConfig) config).timeZone();
+      } else if (config instanceof JdbcSinkConfig) {
+        timeZone = ((JdbcSinkConfig) config).timeZone;
+      } else {
+        timeZone = TimeZone.getTimeZone(ZoneOffset.UTC);
+      }
+    switch (columnDefn.type()) {
+      // Timestamp is a date + time
+      case microsoft.sql.Types.DATETIMEOFFSET: {
+        return rs -> rs.getTimestamp(col, DateTimeUtils.getTimeZoneCalendar(timeZone));
+      }
+
+      default:
+    	// Delegate for the remaining logic
+    	return super.createColumnConverter(mapping);
+    }
+
+
+  }
+  
   @Override
   protected ColumnDefinition columnDefinition(
       ResultSet resultSet,

@@ -22,6 +22,8 @@ import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class DateTimeUtils {
 
@@ -63,6 +65,19 @@ public class DateTimeUtils {
       sdf.setTimeZone(aTimeZone);
       return sdf;
     }).format(date);
+  }
+
+  /**
+   * Format the given date per the specified timezone with nano seconds in a format supported by SQL.
+   * @param date the date to convert to a String
+   * @param timezone timezone to apply
+   * @return the formatted string
+   */
+
+  public static String formatDateTimeOffset(java.sql.Timestamp date, TimeZone timeZone) {
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSS XXX");
+    ZonedDateTime zdt = ZonedDateTime.ofInstant(date.toInstant(), timeZone.toZoneId());
+    return zdt.format(dtf);
   }
 
   private DateTimeUtils() {
